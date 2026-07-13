@@ -246,8 +246,8 @@ class AuraClimateCard extends HTMLElement {
                     <path class="track" d="" />
                     <path class="lightfill" d="" />
                     <path class="darkfill" d="" />
+                    <text class="curtemp-text" x="40" y="70" text-anchor="middle" dominant-baseline="central" font-size="17" font-weight="600" fill="#ffffff"><tspan class="curtemp-val"></tspan><tspan class="curtemp-deg" dy="-6" font-size="10">°</tspan></text>
                   </svg>
-                  <div class="curtemp"></div>
                 </div>
               </div>
               <div class="mode-col">
@@ -356,19 +356,7 @@ class AuraClimateCard extends HTMLElement {
           stroke-linecap: round;
           transition: d 0.15s ease, stroke 0.15s ease, stroke-opacity 0.15s ease;
         }
-        .curtemp {
-          position: absolute;
-          top: 50%;
-          left: 37.03%;
-          transform: translate(-50%, -50%);
-          font-size: 17px;
-          font-weight: 600;
-          color: #ffffff;
-          line-height: 1;
-          text-align: center;
-          white-space: nowrap;
-        }
-        .curtemp .deg { font-size: 11px; font-weight: 400; opacity: 0.7; }
+        .curtemp-text { pointer-events: none; }
         .mode-col {
           position: relative;
           height: 100%;
@@ -515,7 +503,7 @@ class AuraClimateCard extends HTMLElement {
       track: this.shadowRoot.querySelector(".track"),
       light: this.shadowRoot.querySelector(".lightfill"),
       dark: this.shadowRoot.querySelector(".darkfill"),
-      curtemp: this.shadowRoot.querySelector(".curtemp"),
+      curtempVal: this.shadowRoot.querySelector(".curtemp-val"),
       targettemp: this.shadowRoot.querySelector(".targettemp"),
       thname: this.shadowRoot.querySelector(".thname"),
       modebtn: this.shadowRoot.querySelector(".modebtn"),
@@ -630,8 +618,7 @@ class AuraClimateCard extends HTMLElement {
     el.dark.style.stroke = color;
     el.dark.style.strokeOpacity = "1";
 
-    el.curtemp.innerHTML =
-      (current != null ? current.toFixed(1) : "--") + '<span class="deg">°</span>';
+    el.curtempVal.textContent = current != null ? current.toFixed(1) : "--";
     el.targettemp.innerHTML =
       (target != null ? target.toFixed(1) : "--") + '<span class="deg">°</span>';
 
