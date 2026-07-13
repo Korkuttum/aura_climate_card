@@ -53,10 +53,11 @@ const MODE_COLORS = {
 
 const FALLBACK_COLOR = "#44739e";
 
-const R = 46;
-const CX = 4;
-const CY = 50;
-const SWEEP = Math.PI; // 180 degrees
+// Düzeltme: Daha büyük yarıçap ve merkez
+const R = 48;
+const CX = 50; // Merkezi ortala
+const CY = 50; // Merkezi ortala
+const SWEEP = Math.PI; // 180 derece
 const PHI_START = Math.PI / 2;
 
 function pointFor(fraction) {
@@ -71,7 +72,7 @@ function arcSegment(f0, f1) {
   if (hi - lo < 0.001) return "";
   const p0 = pointFor(lo);
   const p1 = pointFor(hi);
-  // Düzeltme: Büyük yay kontrolü daha hassas
+  // Düzeltme: Büyük yay kontrolü
   const largeArc = hi - lo > 0.5 ? 1 : 0;
   return (
     "M " + p0.x.toFixed(2) + " " + p0.y.toFixed(2) +
@@ -243,11 +244,14 @@ class AuraClimateCard extends HTMLElement {
             <div class="wrap">
               <div class="arc-col">
                 <div class="arc-inner">
-                  <svg class="arc-svg" viewBox="0 0 54 100" preserveAspectRatio="xMinYMid meet">
+                  <svg class="arc-svg" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
                     <path class="track" d="" />
                     <path class="darkfill" d="" />
                     <path class="lightfill" d="" />
-                    <text class="curtemp-text" x="25" y="50" text-anchor="middle" dominant-baseline="central" font-size="14" font-weight="600" fill="#ffffff"><tspan class="curtemp-val"></tspan><tspan class="curtemp-unit" dy="-4" font-size="8"></tspan></text>
+                    <text class="curtemp-text" x="50" y="50" text-anchor="middle" dominant-baseline="central" font-size="16" font-weight="600" fill="#ffffff">
+                      <tspan class="curtemp-val"></tspan>
+                      <tspan class="curtemp-unit" dy="-4" font-size="10"></tspan>
+                    </text>
                   </svg>
                 </div>
               </div>
@@ -329,35 +333,40 @@ class AuraClimateCard extends HTMLElement {
           position: relative;
           display: flex;
           align-items: center;
-          justify-content: flex-start;
+          justify-content: center;
           height: 100%;
           min-width: 0;
         }
         .arc-inner {
           position: relative;
-          width: 59px;
-          height: 110px;
+          width: 100px;
+          height: 100px;
           max-height: 100%;
           flex-shrink: 0;
         }
         .arc-svg {
-          width: 59px;
-          height: 100%;
-          max-height: 110px;
+          width: 100px;
+          height: 100px;
           display: block;
         }
         .track {
           fill: none;
           stroke: #555;
           opacity: 0.35;
-          stroke-width: 6;
+          stroke-width: 8;
           stroke-linecap: round;
         }
-        .darkfill, .lightfill {
+        .darkfill {
           fill: none;
-          stroke-width: 6;
+          stroke-width: 8;
           stroke-linecap: round;
-          transition: d 0.15s ease, stroke 0.15s ease, stroke-opacity 0.15s ease;
+          transition: d 0.15s ease, stroke 0.15s ease;
+        }
+        .lightfill {
+          fill: none;
+          stroke-width: 8;
+          stroke-linecap: round;
+          transition: d 0.15s ease, stroke 0.15s ease;
         }
         .curtemp-text { pointer-events: none; }
         .mode-col {
@@ -606,31 +615,23 @@ class AuraClimateCard extends HTMLElement {
       ? ACTION_COLORS[actionKey]
       : MODE_COLORS[modeKey] || FALLBACK_COLOR;
 
+    // Değerleri normalize et
     const fTarget = target != null && max > min ? (target - min) / (max - min) : 0;
     const fCurrent = current != null && max > min ? (current - min) / (max - min) : 0;
-    const isCooling = modeKey === "cool";
 
-    // Track (arka plan yayı)
+    // Track her zaman tam yay
     el.track.setAttribute("d", arcSegment(0, 1));
 
-    // Düzeltme: Dark ve Light katmanlarını doğru sırada ve doğru yönde çiz
-    if (isCooling) {
-      // Soğutma: Soldan (0) başla, current'e kadar dark çiz
-      // Light: current'ten target'e kadar
-      el.dark.setAttribute("d", arcSegment(0, fCurrent));
-      el.light.setAttribute("d", arcSegment(fCurrent, fTarget));
-    } else {
-      // Isıtma: Soldan (0) başla, current'e kadar dark çiz
-      // Light: current'ten target'e kadar
-      el.dark.setAttribute("d", arcSegment(0, fCurrent));
-      el.light.setAttribute("d", arcSegment(fCurrent, fTarget));
-    }
-
-    // Stil ayarları
+    // Düzeltme: Dark = mevcut sıcaklığa kadar, Light = mevcut sıcaklıktan hedefe
+    // Her iki durumda da soldan başla ve sağa doğru ilerle
+    el.dark.setAttribute("d", arcSegment(0, fCurrent));
+    el.light.setAttribute("d", arcSegment(fCurrent, fTarget));
+    
+    // Stiller
     el.dark.style.stroke = color;
     el.dark.style.strokeOpacity = "1";
     el.light.style.stroke = color;
-    el.light.style.strokeOpacity = "0.28";
+    el.light.style.strokeOpacity = "0.3";
 
     const unit =
       (this._hass && this._hass.config && this._hass.config.unit_system && this._hass.config.unit_system.temperature) ||
