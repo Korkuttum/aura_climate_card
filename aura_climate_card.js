@@ -71,7 +71,8 @@ function arcSegment(f0, f1) {
   if (hi - lo < 0.001) return "";
   const p0 = pointFor(lo);
   const p1 = pointFor(hi);
-  const largeArc = hi - lo > 0.75 ? 1 : 0;
+  // Düzeltme: Büyük yay kontrolü daha hassas
+  const largeArc = hi - lo > 0.5 ? 1 : 0;
   return (
     "M " + p0.x.toFixed(2) + " " + p0.y.toFixed(2) +
     " A " + R + " " + R + " 0 " + largeArc + " 0 " +
@@ -244,8 +245,8 @@ class AuraClimateCard extends HTMLElement {
                 <div class="arc-inner">
                   <svg class="arc-svg" viewBox="0 0 54 100" preserveAspectRatio="xMinYMid meet">
                     <path class="track" d="" />
-                    <path class="lightfill" d="" />
                     <path class="darkfill" d="" />
+                    <path class="lightfill" d="" />
                     <text class="curtemp-text" x="25" y="50" text-anchor="middle" dominant-baseline="central" font-size="14" font-weight="600" fill="#ffffff"><tspan class="curtemp-val"></tspan><tspan class="curtemp-unit" dy="-4" font-size="8"></tspan></text>
                   </svg>
                 </div>
@@ -352,7 +353,7 @@ class AuraClimateCard extends HTMLElement {
           stroke-width: 6;
           stroke-linecap: round;
         }
-        .lightfill, .darkfill {
+        .darkfill, .lightfill {
           fill: none;
           stroke-width: 6;
           stroke-linecap: round;
@@ -504,8 +505,8 @@ class AuraClimateCard extends HTMLElement {
     this._el = {
       root: this.shadowRoot,
       track: this.shadowRoot.querySelector(".track"),
-      light: this.shadowRoot.querySelector(".lightfill"),
       dark: this.shadowRoot.querySelector(".darkfill"),
+      light: this.shadowRoot.querySelector(".lightfill"),
       curtempVal: this.shadowRoot.querySelector(".curtemp-val"),
       curtempUnit: this.shadowRoot.querySelector(".curtemp-unit"),
       targettemp: this.shadowRoot.querySelector(".targettemp"),
@@ -609,18 +610,27 @@ class AuraClimateCard extends HTMLElement {
     const fCurrent = current != null && max > min ? (current - min) / (max - min) : 0;
     const isCooling = modeKey === "cool";
 
+    // Track (arka plan yayı)
     el.track.setAttribute("d", arcSegment(0, 1));
+
+    // Düzeltme: Dark ve Light katmanlarını doğru sırada ve doğru yönde çiz
     if (isCooling) {
-      el.dark.setAttribute("d", arcSegment(fCurrent, 1));
-      el.light.setAttribute("d", arcSegment(fTarget, fCurrent));
+      // Soğutma: Soldan (0) başla, current'e kadar dark çiz
+      // Light: current'ten target'e kadar
+      el.dark.setAttribute("d", arcSegment(0, fCurrent));
+      el.light.setAttribute("d", arcSegment(fCurrent, fTarget));
     } else {
+      // Isıtma: Soldan (0) başla, current'e kadar dark çiz
+      // Light: current'ten target'e kadar
       el.dark.setAttribute("d", arcSegment(0, fCurrent));
       el.light.setAttribute("d", arcSegment(fCurrent, fTarget));
     }
-    el.light.style.stroke = color;
-    el.light.style.strokeOpacity = "0.28";
+
+    // Stil ayarları
     el.dark.style.stroke = color;
     el.dark.style.strokeOpacity = "1";
+    el.light.style.stroke = color;
+    el.light.style.strokeOpacity = "0.28";
 
     const unit =
       (this._hass && this._hass.config && this._hass.config.unit_system && this._hass.config.unit_system.temperature) ||
