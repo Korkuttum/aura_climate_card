@@ -319,7 +319,7 @@ class AuraClimateCard extends HTMLElement {
           display: grid;
           grid-template-columns: 1fr 72px 1fr;
           align-items: center;
-          gap: 2px;
+          gap: 10px;
           height: 100%;
           padding: 0 14px;
           box-sizing: border-box;
@@ -334,10 +334,15 @@ class AuraClimateCard extends HTMLElement {
         }
         .arc-inner {
           position: relative;
+          width: 100%;
           height: 100%;
-          display: inline-block;
         }
-        .arc-svg { height: 100%; width: auto; display: block; }
+        .arc-svg {
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
+          display: block;
+        }
         .track {
           fill: none;
           stroke: #555;
@@ -602,7 +607,11 @@ class AuraClimateCard extends HTMLElement {
 
     const actionKey = (hvacAction || "").toLowerCase();
     const modeKey = (hvacMode || "").toLowerCase();
-    const color = ACTION_COLORS[actionKey] || MODE_COLORS[modeKey] || FALLBACK_COLOR;
+    const isActiveAction =
+      actionKey && actionKey !== "idle" && actionKey !== "off" && ACTION_COLORS[actionKey];
+    const color = isActiveAction
+      ? ACTION_COLORS[actionKey]
+      : MODE_COLORS[modeKey] || FALLBACK_COLOR;
 
     const fTarget = target != null && max > min ? (target - min) / (max - min) : 0;
     const fCurrent = current != null && max > min ? (current - min) / (max - min) : 0;
