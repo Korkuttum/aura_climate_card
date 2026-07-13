@@ -246,7 +246,7 @@ class AuraClimateCard extends HTMLElement {
                     <path class="track" d="" />
                     <path class="lightfill" d="" />
                     <path class="darkfill" d="" />
-                    <text class="curtemp-text" x="25" y="50" text-anchor="middle" dominant-baseline="central" font-size="14" font-weight="600" fill="#ffffff"><tspan class="curtemp-val"></tspan><tspan class="curtemp-deg" dy="-4" font-size="8">°</tspan></text>
+                    <text class="curtemp-text" x="25" y="50" text-anchor="middle" dominant-baseline="central" font-size="14" font-weight="600" fill="#ffffff"><tspan class="curtemp-val"></tspan><tspan class="curtemp-unit" dy="-4" font-size="8"></tspan></text>
                   </svg>
                 </div>
               </div>
@@ -507,6 +507,7 @@ class AuraClimateCard extends HTMLElement {
       light: this.shadowRoot.querySelector(".lightfill"),
       dark: this.shadowRoot.querySelector(".darkfill"),
       curtempVal: this.shadowRoot.querySelector(".curtemp-val"),
+      curtempUnit: this.shadowRoot.querySelector(".curtemp-unit"),
       targettemp: this.shadowRoot.querySelector(".targettemp"),
       thname: this.shadowRoot.querySelector(".thname"),
       modebtn: this.shadowRoot.querySelector(".modebtn"),
@@ -621,9 +622,16 @@ class AuraClimateCard extends HTMLElement {
     el.dark.style.stroke = color;
     el.dark.style.strokeOpacity = "1";
 
+    const unit =
+      (this._hass && this._hass.config && this._hass.config.unit_system && this._hass.config.unit_system.temperature) ||
+      attrs.temperature_unit ||
+      "°C";
+
     el.curtempVal.textContent = current != null ? current.toFixed(1) : "--";
+    el.curtempUnit.textContent = unit;
     el.targettemp.innerHTML =
-      (target != null ? target.toFixed(1) : "--") + '<span class="deg">°</span>';
+      (target != null ? target.toFixed(1) : "--") +
+      '<span class="deg">' + unit + '</span>';
 
     el.thname.textContent =
       this._config.name || attrs.friendly_name || this._config.entity;
