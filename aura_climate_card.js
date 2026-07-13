@@ -53,9 +53,9 @@ const MODE_COLORS = {
 
 const FALLBACK_COLOR = "#44739e";
 
-const R = 54;
-const CX = 40;
-const CY = 70;
+const R = 44;
+const CX = 6.5;
+const CY = 50.5;
 const SWEEP = Math.PI; // 180 degrees
 const PHI_START = Math.PI / 2;
 
@@ -242,11 +242,11 @@ class AuraClimateCard extends HTMLElement {
             <div class="wrap">
               <div class="arc-col">
                 <div class="arc-inner">
-                  <svg class="arc-svg" viewBox="0 0 108 140">
+                  <svg class="arc-svg" viewBox="0 0 57 101" preserveAspectRatio="xMinYMid meet">
                     <path class="track" d="" />
                     <path class="lightfill" d="" />
                     <path class="darkfill" d="" />
-                    <text class="curtemp-text" x="40" y="70" text-anchor="middle" dominant-baseline="central" font-size="17" font-weight="600" fill="#ffffff"><tspan class="curtemp-val"></tspan><tspan class="curtemp-deg" dy="-6" font-size="10">°</tspan></text>
+                    <text class="curtemp-text" x="25" y="50.5" text-anchor="middle" dominant-baseline="central" font-size="14" font-weight="600" fill="#ffffff"><tspan class="curtemp-val"></tspan><tspan class="curtemp-deg" dy="-4" font-size="8">°</tspan></text>
                   </svg>
                 </div>
               </div>
