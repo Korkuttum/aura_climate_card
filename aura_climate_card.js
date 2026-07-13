@@ -317,7 +317,7 @@ class AuraClimateCard extends HTMLElement {
         }
         .wrap {
           display: grid;
-          grid-template-columns: 1fr auto 1fr;
+          grid-template-columns: 1fr 72px 1fr;
           align-items: center;
           gap: 2px;
           height: 100%;
@@ -367,7 +367,7 @@ class AuraClimateCard extends HTMLElement {
         .mode-col {
           position: relative;
           height: 100%;
-          min-width: 90px;
+          width: 100%;
           display: grid;
           grid-template-rows: 1fr auto 1fr;
           justify-items: center;
@@ -376,6 +376,8 @@ class AuraClimateCard extends HTMLElement {
         .mode-col .thname {
           grid-row: 1;
           align-self: end;
+          width: 100%;
+          max-width: 100%;
         }
         .mode-col .modebtn {
           grid-row: 2;
