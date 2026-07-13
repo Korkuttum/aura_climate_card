@@ -330,6 +330,7 @@ class AuraClimateCard extends HTMLElement {
           align-items: center;
           justify-content: flex-start;
           height: 100%;
+          min-width: 0;
         }
         .arc-inner {
           position: relative;
@@ -434,6 +435,7 @@ class AuraClimateCard extends HTMLElement {
           flex-direction: column;
           align-items: flex-end;
           justify-content: center;
+          min-width: 0;
         }
         .capsule {
           display: flex;
