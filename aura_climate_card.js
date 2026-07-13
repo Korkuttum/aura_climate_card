@@ -53,9 +53,9 @@ const MODE_COLORS = {
 
 const FALLBACK_COLOR = "#44739e";
 
-const R = 44;
-const CX = 6.5;
-const CY = 50.5;
+const R = 46;
+const CX = 4;
+const CY = 50;
 const SWEEP = Math.PI; // 180 degrees
 const PHI_START = Math.PI / 2;
 
@@ -242,11 +242,11 @@ class AuraClimateCard extends HTMLElement {
             <div class="wrap">
               <div class="arc-col">
                 <div class="arc-inner">
-                  <svg class="arc-svg" viewBox="0 0 57 101" preserveAspectRatio="xMinYMid meet">
+                  <svg class="arc-svg" viewBox="0 0 54 100" preserveAspectRatio="xMinYMid meet">
                     <path class="track" d="" />
                     <path class="lightfill" d="" />
                     <path class="darkfill" d="" />
-                    <text class="curtemp-text" x="25" y="50.5" text-anchor="middle" dominant-baseline="central" font-size="14" font-weight="600" fill="#ffffff"><tspan class="curtemp-val"></tspan><tspan class="curtemp-deg" dy="-4" font-size="8">°</tspan></text>
+                    <text class="curtemp-text" x="25" y="50" text-anchor="middle" dominant-baseline="central" font-size="14" font-weight="600" fill="#ffffff"><tspan class="curtemp-val"></tspan><tspan class="curtemp-deg" dy="-4" font-size="8">°</tspan></text>
                   </svg>
                 </div>
               </div>
@@ -334,25 +334,27 @@ class AuraClimateCard extends HTMLElement {
         }
         .arc-inner {
           position: relative;
-          width: 100%;
-          height: 100%;
+          width: 59px;
+          height: 110px;
+          max-height: 100%;
+          flex-shrink: 0;
         }
         .arc-svg {
-          width: 100%;
+          width: 59px;
           height: 100%;
-          object-fit: contain;
+          max-height: 110px;
           display: block;
         }
         .track {
           fill: none;
           stroke: #555;
           opacity: 0.35;
-          stroke-width: 13;
+          stroke-width: 8;
           stroke-linecap: round;
         }
         .lightfill, .darkfill {
           fill: none;
-          stroke-width: 13;
+          stroke-width: 8;
           stroke-linecap: round;
           transition: d 0.15s ease, stroke 0.15s ease, stroke-opacity 0.15s ease;
         }
