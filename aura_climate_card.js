@@ -349,12 +349,12 @@ class AuraClimateCard extends HTMLElement {
           fill: none;
           stroke: #555;
           opacity: 0.35;
-          stroke-width: 8;
+          stroke-width: 6;
           stroke-linecap: round;
         }
         .lightfill, .darkfill {
           fill: none;
-          stroke-width: 8;
+          stroke-width: 6;
           stroke-linecap: round;
           transition: d 0.15s ease, stroke 0.15s ease, stroke-opacity 0.15s ease;
         }
