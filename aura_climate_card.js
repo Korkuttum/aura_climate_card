@@ -321,12 +321,14 @@ class AuraClimateCard extends HTMLElement {
           align-items: center;
           gap: 2px;
           height: 100%;
+          padding: 0 14px;
+          box-sizing: border-box;
         }
         .arc-col {
           position: relative;
           display: flex;
           align-items: center;
-          justify-content: center;
+          justify-content: flex-start;
           height: 100%;
         }
         .arc-inner {
@@ -365,11 +367,17 @@ class AuraClimateCard extends HTMLElement {
           position: relative;
           height: 100%;
           min-width: 90px;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
+          display: grid;
+          grid-template-rows: 1fr auto 1fr;
+          justify-items: center;
           gap: 4px;
+        }
+        .mode-col .thname {
+          grid-row: 1;
+          align-self: end;
+        }
+        .mode-col .modebtn {
+          grid-row: 2;
         }
         .modebtn {
           background: rgba(255,255,255,0.08);
@@ -424,7 +432,7 @@ class AuraClimateCard extends HTMLElement {
         .temp-col {
           display: flex;
           flex-direction: column;
-          align-items: center;
+          align-items: flex-end;
           justify-content: center;
         }
         .capsule {
