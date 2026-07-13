@@ -56,8 +56,8 @@ const FALLBACK_COLOR = "#44739e";
 const R = 54;
 const CX = 40;
 const CY = 70;
-const SWEEP = (4 * Math.PI) / 3; // 240 degrees
-const PHI_START = (2 * Math.PI) / 3;
+const SWEEP = Math.PI; // 180 degrees
+const PHI_START = Math.PI / 2;
 
 function pointFor(fraction) {
   const f = Math.max(0, Math.min(1, fraction));
@@ -291,7 +291,7 @@ class AuraClimateCard extends HTMLElement {
           height: 100%;
           background: #1c1c1e;
           box-sizing: border-box;
-          padding: 8px 10px;
+          padding: 4px 6px;
           overflow: hidden;
           border-radius: var(--ha-card-border-radius, 12px);
         }
@@ -321,7 +321,7 @@ class AuraClimateCard extends HTMLElement {
           align-items: center;
           gap: 10px;
           height: 100%;
-          padding: 0 14px;
+          padding: 0 4px;
           box-sizing: border-box;
         }
         .arc-col {
