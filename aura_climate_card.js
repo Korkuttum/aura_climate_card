@@ -362,8 +362,9 @@ class AuraClimateCard extends HTMLElement {
           height: 100%;
           width: 100%;
           display: grid;
-          grid-template-rows: 1fr auto 1fr;
+          grid-template-rows: minmax(0, 1fr) auto minmax(0, 1fr);
           justify-items: center;
+          overflow: hidden;
           gap: 4px;
         }
         .mode-col .thname {
