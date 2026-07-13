@@ -1,6 +1,6 @@
 {
-  "name": "Xiaomi Air Purifier Card",
+  "name": "Aura Climate Card",
   "render_readme": true,
   "content_in_root": true,
-  "filename": "purifier-card.js"
+  "filename": "aura_climate_card.js"
 }
