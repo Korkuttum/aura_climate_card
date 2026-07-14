@@ -31,7 +31,7 @@ const MODE_META = {
 };
 const DEFAULT_MODE_META = { icon: "mdi:help-circle", label: "Bilinmiyor", color: "#8a8a8a" };
 
-const R = 46, CX = 54, CY = 20;
+const R = 40, CX = 50, CY = 30;
 const START_ANGLE = Math.PI; // 180 derece (sol uç)
 const SWEEP = Math.PI; // 180 derece - tam yarım daire
 
@@ -137,7 +137,7 @@ class AuraClimateCard extends HTMLElement {
             <div id="wrap">
               <div class="arc-col">
                 <div class="arc-inner">
-                  <svg id="arcsvg" viewBox="0 0 108 76">
+                  <svg id="arcsvg" viewBox="0 0 100 100">
                     <path id="track" class="track"/>
                     <path id="lightfill"/>
                     <path id="darkfill"/>
@@ -376,13 +376,13 @@ class AuraClimateCard extends HTMLElement {
       #cardbg { position: relative; background: #1c1c1e; border-radius: 12px; padding: 8px 10px; box-sizing: border-box; overflow: hidden; min-width: 0; }
       #particles { position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
       #tint { position: absolute; inset: 0; pointer-events: none; z-index: 0; transition: background .3s ease; }
-      #wrap { position: relative; z-index: 1; display: grid; grid-template-columns: 1fr 0.9fr 0.75fr; align-items: center; gap: 2px; height: 110px; }
-      .arc-col { position: relative; display: flex; align-items: center; justify-content: center; height: 100%; }
-      .arc-inner { position: relative; height: 100%; display: inline-block; }
-      #arcsvg { height: 100%; width: auto; display: block; }
+      #wrap { position: relative; z-index: 1; display: grid; grid-template-columns: minmax(0,1fr) minmax(0,0.9fr) minmax(0,0.75fr); align-items: center; gap: 2px; height: 110px; }
+      .arc-col { position: relative; display: flex; align-items: center; justify-content: center; height: 100%; overflow: hidden; min-width: 0; }
+      .arc-inner { position: relative; height: 100%; width: 100%; }
+      #arcsvg { height: 100%; width: 100%; display: block; }
       .track { fill: none; stroke: #555; opacity: .35; stroke-width: 13; stroke-linecap: round; }
       #lightfill, #darkfill { fill: none; stroke-width: 13; stroke-linecap: round; transition: d .15s ease, stroke .15s ease; }
-      #curtemp { position: absolute; top: 42%; left: 50%; transform: translate(-50%,-50%); font-size: 17px; font-weight: 600; color: #fff; line-height: 1; text-align: center; white-space: nowrap; }
+      #curtemp { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); font-size: 17px; font-weight: 600; color: #fff; line-height: 1; text-align: center; white-space: nowrap; }
       #curtemp .deg, #targettemp .deg { font-size: 11px; font-weight: 400; opacity: .7; }
       .mode-col { position: relative; height: 100%; width: 100%; }
       #thname { position: absolute; top: 2px; left: 50%; transform: translateX(-50%); font-size: 12px; font-weight: 600; color: #fff; line-height: 1.15; text-align: center; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
