@@ -4,13 +4,6 @@
  * Home Assistant custom Lovelace kartı: dairesel (arc) sıcaklık göstergesi,
  * dokunulunca açılan mod seçim overlay'i ve ısıtma/soğutma parçacık
  * efektleri (kor/kar) ile.
- *
- * Kurulum:
- * 1) Bu dosyayı /config/www/aura_climate_card.js olarak kopyalayın.
- * 2) Ayarlar > Panolar > Kaynaklar (Resources) altına ekleyin:
- * URL: /local/aura_climate_card.js
- * Tür: JavaScript Modülü
- * 3) Karta "Aura Climate Card" adıyla UI editöründen ekleyin.
  */
 
 const MODE_META = {
@@ -24,7 +17,7 @@ const MODE_META = {
 };
 const DEFAULT_MODE_META = { icon: "mdi:help-circle", label: "Bilinmiyor", color: "#8a8a8a" };
 const R = 54, CX = 40, CY = 70;
-const SWEEP = (4 * Math.PI) / 3; // 240 derece
+const SWEEP = (4 * Math.PI) / 3;
 
 function clamp(v, lo, hi) {
   return Math.max(lo, Math.min(hi, v));
@@ -368,13 +361,25 @@ class AuraClimateCard extends HTMLElement {
 
   _css() {
     return `
-      ha-card { background: transparent; box-shadow: none; border: none; padding: 0; }
-      #root { 
-          background: transparent; 
-          border-radius: var(--ha-card-border-radius, 12px); 
-          padding: 1.1rem; 
+      ha-card { 
+        background: transparent; 
+        box-shadow: none; 
+        border: none; 
+        padding: 0; 
       }
-      #cardbg { position: relative; background: #1c1c1e; border-radius: 12px; padding: 8px 10px; box-sizing: border-box; overflow: hidden; }
+      #root { 
+        background: transparent; 
+        border-radius: var(--ha-card-border-radius, 12px); 
+        padding: 8px; 
+      }
+      #cardbg { 
+        position: relative; 
+        background: transparent; 
+        border-radius: 12px; 
+        padding: 12px; 
+        box-sizing: border-box; 
+        overflow: hidden; 
+      }
       #particles { position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
       #tint { position: absolute; inset: 0; pointer-events: none; z-index: 0; transition: background .3s ease; }
       #wrap { position: relative; z-index: 1; display: grid; grid-template-columns: 1fr 0.9fr 0.75fr; align-items: center; gap: 2px; height: 110px; }
@@ -397,6 +402,7 @@ class AuraClimateCard extends HTMLElement {
       #popup { position: absolute; inset: 0; background: rgba(28,28,30,.94); display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; opacity: 0; pointer-events: none; transition: opacity .15s ease; z-index: 5; border-radius: inherit; }
       #popup button { display: flex; flex-direction: column; align-items: center; gap: 3px; background: rgba(255,255,255,.06); border: 2px solid transparent; cursor: pointer; width: 52px; padding: 7px 0 5px; border-radius: 12px; font-size: 10px; color: #fff; }
       #popup button ha-icon { --mdc-icon-size: 20px; }
+
       @keyframes snowfall { 0%{transform:translate(0,-8px) rotate(0deg);opacity:0;} 12%{opacity:.6;} 30%{transform:translate(16px,25px) rotate(90deg);} 50%{transform:translate(-14px,55px) rotate(180deg);} 70%{transform:translate(12px,80px) rotate(270deg);} 100%{transform:translate(-6px,116px) rotate(360deg);opacity:0;} }
       @keyframes emberflicker { 0%{transform:translate(0,6px) scale(.5);opacity:0;box-shadow:0 0 2px #ffa94d;} 20%{opacity:.75;transform:translate(3px,-14px) scale(1.1);box-shadow:0 0 5px #ffb066;} 50%{transform:translate(-3px,-45px) scale(.8);opacity:.55;} 75%{transform:translate(4px,-75px) scale(1);opacity:.4;} 100%{transform:translate(-2px,-112px) scale(.3);opacity:0;box-shadow:0 0 1px transparent;} }
       .snowp { position: absolute; bottom: 0; color: #cfe8ff; animation: snowfall linear infinite; --mdc-icon-size: 1em; }
