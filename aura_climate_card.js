@@ -18,7 +18,7 @@ const MODE_META = {
 const DEFAULT_MODE_META = { icon: "mdi:help-circle", label: "Bilinmiyor", color: "#8a8a8a" };
 
 const R = 54, CX = 40, CY = 70;
-const SWEEP = (4 * Math.PI) / 3; // 240 derece
+const SWEEP = (4 * Math.PI) / 3;
 
 function clamp(v, lo, hi) {
   return Math.max(lo, Math.min(hi, v));
@@ -364,7 +364,7 @@ class AuraClimateCard extends HTMLElement {
         background: transparent; 
         box-shadow: none; 
         border: none; 
-        padding: 4px 6px; 
+        padding: 6px 8px; 
         border-radius: var(--ha-card-border-radius, 12px);
         height: 100%;
         box-sizing: border-box;
@@ -379,12 +379,13 @@ class AuraClimateCard extends HTMLElement {
         display: flex;
         flex-direction: column;
         overflow: hidden;
+        position: relative;
       }
       #cardbg { 
         position: relative; 
         background: transparent; 
         border-radius: 10px; 
-        padding: 6px; 
+        padding: 4px; 
         box-sizing: border-box; 
         overflow: hidden; 
         flex: 1;
@@ -394,7 +395,7 @@ class AuraClimateCard extends HTMLElement {
         position: relative; 
         z-index: 1; 
         display: grid; 
-        grid-template-columns: 1fr 0.9fr 0.75fr; 
+        grid-template-columns: 115px 1fr 100px; 
         align-items: center; 
         gap: 8px; 
         height: 100%; 
@@ -404,8 +405,9 @@ class AuraClimateCard extends HTMLElement {
         position: relative; 
         display: flex; 
         align-items: center; 
-        justify-content: center; 
+        justify-content: flex-start; 
         height: 100%; 
+        padding-left: 8px;
       }
       .arc-inner { position: relative; height: 100%; display: inline-block; }
       #arcsvg { height: 100%; width: auto; display: block; }
@@ -414,8 +416,8 @@ class AuraClimateCard extends HTMLElement {
       #curtemp { 
         position: absolute; 
         top: 50%; 
-        left: 37%; 
-        transform: translate(-50%,-50%); 
+        left: 50%; 
+        transform: translate(-50%, -50%); 
         font-size: 16.5px; 
         font-weight: 600; 
         color: #fff; 
@@ -431,14 +433,14 @@ class AuraClimateCard extends HTMLElement {
         flex-direction: column; 
         align-items: center; 
         justify-content: center; 
-        gap: 4px; 
+        gap: 6px; 
       }
       #thname { 
         font-size: 12.5px; 
         font-weight: 600; 
         color: #fff; 
         text-align: center; 
-        margin-bottom: 6px;
+        margin-bottom: 4px;
         max-width: 95px; 
         overflow: hidden; 
         text-overflow: ellipsis; 
@@ -456,13 +458,65 @@ class AuraClimateCard extends HTMLElement {
         justify-content: center; 
       }
       #modeicon { --mdc-icon-size: 23px; }
-      .temp-col { display: flex; flex-direction: column; align-items: center; justify-content: center; }
-      .steppers { display: flex; flex-direction: column; align-items: center; background: rgba(255,255,255,.06); border-radius: 22px; padding: 4px; gap: 6px; }
-      .steppers button { background: none; border: none; cursor: pointer; width: 32px; height: 26px; display: flex; align-items: center; justify-content: center; color: #fff; border-radius: 16px; }
+      .temp-col { 
+        display: flex; 
+        flex-direction: column; 
+        align-items: center; 
+        justify-content: center; 
+        height: 100%;
+      }
+      .steppers { 
+        display: flex; 
+        flex-direction: column; 
+        align-items: center; 
+        background: rgba(255,255,255,.06); 
+        border-radius: 22px; 
+        padding: 4px; 
+        gap: 6px; 
+      }
+      .steppers button { 
+        background: none; 
+        border: none; 
+        cursor: pointer; 
+        width: 32px; 
+        height: 26px; 
+        display: flex; 
+        align-items: center; 
+        justify-content: center; 
+        color: #fff; 
+        border-radius: 16px; 
+      }
       .steppers button ha-icon { --mdc-icon-size: 16px; }
       #targettemp { font-size: 15px; font-weight: 700; color: #fff; }
-      #popup { position: absolute; inset: 0; background: rgba(28,28,30,.94); display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; opacity: 0; pointer-events: none; transition: opacity .15s ease; z-index: 5; border-radius: inherit; }
-      #popup button { display: flex; flex-direction: column; align-items: center; gap: 3px; background: rgba(255,255,255,.06); border: 2px solid transparent; cursor: pointer; width: 52px; padding: 7px 0 5px; border-radius: 12px; font-size: 10px; color: #fff; }
+      #popup { 
+        position: absolute; 
+        inset: 0; 
+        background: rgba(28,28,30,.94); 
+        display: flex; 
+        align-items: center; 
+        justify-content: center; 
+        gap: 10px; 
+        flex-wrap: wrap; 
+        opacity: 0; 
+        pointer-events: none; 
+        transition: opacity .15s ease; 
+        z-index: 5; 
+        border-radius: inherit; 
+      }
+      #popup button { 
+        display: flex; 
+        flex-direction: column; 
+        align-items: center; 
+        gap: 3px; 
+        background: rgba(255,255,255,.06); 
+        border: 2px solid transparent; 
+        cursor: pointer; 
+        width: 52px; 
+        padding: 7px 0 5px; 
+        border-radius: 12px; 
+        font-size: 10px; 
+        color: #fff; 
+      }
       #popup button ha-icon { --mdc-icon-size: 20px; }
 
       @keyframes snowfall { 0%{transform:translate(0,-8px) rotate(0deg);opacity:0;} 12%{opacity:.6;} 30%{transform:translate(16px,25px) rotate(90deg);} 50%{transform:translate(-14px,55px) rotate(180deg);} 70%{transform:translate(12px,80px) rotate(270deg);} 100%{transform:translate(-6px,116px) rotate(360deg);opacity:0;} }
