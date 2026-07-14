@@ -4,20 +4,6 @@
  * Home Assistant custom Lovelace kartı: dairesel (arc) sıcaklık göstergesi,
  * dokunulunca açılan mod seçim overlay'i ve ısıtma/soğutma parçacık
  * efektleri (kor/kar) ile.
- *
- * Kurulum:
- *  1) Bu dosyayı /config/www/aura_climate_card.js olarak kopyalayın.
- *  2) Ayarlar > Panolar > Kaynaklar (Resources) altına ekleyin:
- *       URL: /local/aura_climate_card.js
- *       Tür: JavaScript Modülü
- *  3) Karta "Aura Climate Card" adıyla UI editöründen ekleyin, entity
- *     seçimini açılan yapılandırma ekranından yapın (kod yazmaya gerek yok).
- *
- * YAML örneği:
- *   type: custom:aura-climate-card
- *   entity: climate.oturma_odasi
- *   name: Oturma Odası        # opsiyonel
- *   show_particles: true      # opsiyonel, varsayılan true
  */
 
 const MODE_META = {
@@ -30,9 +16,8 @@ const MODE_META = {
   fan_only: { icon: "mdi:fan", label: "Fan", color: "#7ed6df" },
 };
 const DEFAULT_MODE_META = { icon: "mdi:help-circle", label: "Bilinmiyor", color: "#8a8a8a" };
-
 const R = 54, CX = 40, CY = 70;
-const SWEEP = (4 * Math.PI) / 3; // 240 derece
+const SWEEP = (4 * Math.PI) / 3;
 
 function clamp(v, lo, hi) {
   return Math.max(lo, Math.min(hi, v));
@@ -107,7 +92,7 @@ class AuraClimateCard extends HTMLElement {
   }
 
   getCardSize() {
-    return 3;
+    return 2;
   }
 
   connectedCallback() {
@@ -123,7 +108,6 @@ class AuraClimateCard extends HTMLElement {
         <div id="root">
           <div id="cardbg">
             <div id="particles"></div>
-            <div id="tint"></div>
             <div id="wrap">
               <div class="arc-col">
                 <div class="arc-inner">
@@ -154,11 +138,11 @@ class AuraClimateCard extends HTMLElement {
         </div>
       </ha-card>
     `;
+
     this._els = {
       errorbox: this.shadowRoot.getElementById("errorbox"),
       root: this.shadowRoot.getElementById("root"),
       particles: this.shadowRoot.getElementById("particles"),
-      tint: this.shadowRoot.getElementById("tint"),
       track: this.shadowRoot.getElementById("track"),
       lightfill: this.shadowRoot.getElementById("lightfill"),
       darkfill: this.shadowRoot.getElementById("darkfill"),
@@ -171,21 +155,26 @@ class AuraClimateCard extends HTMLElement {
       minus: this.shadowRoot.getElementById("minus"),
       popup: this.shadowRoot.getElementById("popup"),
     };
+
     this._els.modebtn.addEventListener("click", (e) => {
       e.stopPropagation();
       this._popupOpen = !this._popupOpen;
       this._updateCard();
     });
+
     this._els.popup.addEventListener("click", (e) => {
       if (e.target === this._els.popup) {
         this._popupOpen = false;
         this._updateCard();
       }
     });
+
     this._els.plus.addEventListener("click", () => this._adjustTarget(this._step()));
     this._els.minus.addEventListener("click", () => this._adjustTarget(-this._step()));
+
     this._particlesBuilt = false;
     this._built = true;
+
     if (this._hass && this._config) {
       const stateObj = this._hass.states[this._config.entity];
       if (stateObj) {
@@ -294,6 +283,7 @@ class AuraClimateCard extends HTMLElement {
   _updateCard() {
     if (!this._built || !this._stateObj) return;
     this._clearError();
+
     const attrs = this._stateObj.attributes;
     const mode = this._mode();
     const meta = MODE_META[mode] || DEFAULT_MODE_META;
@@ -314,6 +304,7 @@ class AuraClimateCard extends HTMLElement {
       this._els.darkfill.setAttribute("d", arcSegment(0, fCurrent));
       this._els.lightfill.setAttribute("d", arcSegment(fCurrent, fTarget));
     }
+
     this._els.lightfill.style.stroke = meta.color;
     this._els.lightfill.style.strokeOpacity = "0.28";
     this._els.darkfill.style.stroke = meta.color;
@@ -321,17 +312,22 @@ class AuraClimateCard extends HTMLElement {
 
     this._els.curtemp.innerHTML = `${cur.toFixed(1)}<span class="deg">${unit}</span>`;
     this._els.targettemp.innerHTML = `${tgt.toFixed(1)}<span class="deg">${unit}</span>`;
+
     this._els.modebtn.style.color = meta.color;
     this._els.modebtn.style.background = meta.color + "26";
     this._els.modeicon.setAttribute("icon", meta.icon);
     this._els.thname.textContent = this._config.name || attrs.friendly_name || this._config.entity;
-    this._els.tint.style.background = `radial-gradient(circle at 30% 40%, ${meta.color}22, transparent 70%)`;
+
+    // Dış ince çerçeve kaldırıldı
+    this._els.root.style.boxShadow = "none";
 
     const action = attrs.hvac_action;
     const showParticles = this._config.show_particles !== false;
     if (showParticles) this._setupParticles();
+
     const snowOn = showParticles && (action ? action === "cooling" : mode === "cool");
     const emberOn = showParticles && (action ? action === "heating" : mode === "heat");
+
     this.shadowRoot.querySelectorAll(".snowp").forEach((el) => {
       el.style.display = snowOn ? "block" : "none";
     });
@@ -341,6 +337,7 @@ class AuraClimateCard extends HTMLElement {
 
     const supported = (attrs.hvac_modes && attrs.hvac_modes.length ? attrs.hvac_modes : [mode]);
     if (!supported.includes(mode)) supported.push(mode);
+
     this._els.popup.innerHTML = supported
       .map((m) => {
         const mm = MODE_META[m] || DEFAULT_MODE_META;
@@ -349,8 +346,10 @@ class AuraClimateCard extends HTMLElement {
         return `<button data-mode="${m}" style="${st}"><ha-icon icon="${mm.icon}"></ha-icon><span>${mm.label}</span></button>`;
       })
       .join("");
+
     this._els.popup.style.opacity = this._popupOpen ? "1" : "0";
     this._els.popup.style.pointerEvents = this._popupOpen ? "auto" : "none";
+
     this._els.popup.querySelectorAll("button").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
@@ -361,31 +360,57 @@ class AuraClimateCard extends HTMLElement {
 
   _css() {
     return `
-      ha-card { background: transparent; box-shadow: none; border: none; padding: 0; }
-      #root { background: var(--ha-card-background, var(--card-background-color, #fff)); border-radius: var(--ha-card-border-radius, 12px); padding: 1.1rem; }
-      #cardbg { position: relative; background: #1c1c1e; border-radius: 12px; padding: 8px 10px; box-sizing: border-box; overflow: hidden; }
+      ha-card { 
+        background: transparent; 
+        box-shadow: none; 
+        border: none; 
+        padding: 0; 
+        border-radius: var(--ha-card-border-radius, 12px);
+      }
+      #root { 
+        background: var(--ha-card-background, var(--card-background-color, #fff)); 
+        border-radius: var(--ha-card-border-radius, 12px); 
+        padding: 6px; 
+        overflow: hidden;
+      }
+      #cardbg { 
+        position: relative; 
+        background: transparent; 
+        border-radius: 10px; 
+        padding: 6px; 
+        box-sizing: border-box; 
+        overflow: hidden; 
+      }
       #particles { position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
-      #tint { position: absolute; inset: 0; pointer-events: none; z-index: 0; transition: background .3s ease; }
-      #wrap { position: relative; z-index: 1; display: grid; grid-template-columns: 1fr 0.9fr 0.75fr; align-items: center; gap: 2px; height: 110px; }
+      #wrap { 
+        position: relative; 
+        z-index: 1; 
+        display: grid; 
+        grid-template-columns: 1fr 0.9fr 0.75fr; 
+        align-items: center; 
+        gap: 2px; 
+        height: 94px; 
+      }
       .arc-col { position: relative; display: flex; align-items: center; justify-content: center; height: 100%; }
       .arc-inner { position: relative; height: 100%; display: inline-block; }
       #arcsvg { height: 100%; width: auto; display: block; }
       .track { fill: none; stroke: #555; opacity: .35; stroke-width: 13; stroke-linecap: round; }
       #lightfill, #darkfill { fill: none; stroke-width: 13; stroke-linecap: round; transition: d .15s ease, stroke .15s ease; }
-      #curtemp { position: absolute; top: 50%; left: 37.03%; transform: translate(-50%,-50%); font-size: 17px; font-weight: 600; color: #fff; line-height: 1; text-align: center; white-space: nowrap; }
-      #curtemp .deg, #targettemp .deg { font-size: 11px; font-weight: 400; opacity: .7; }
-      .mode-col { position: relative; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
-      #thname { font-size: 12px; font-weight: 600; color: #fff; line-height: 1.15; text-align: center; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      #modebtn { background: rgba(255,255,255,.08); border: none; cursor: pointer; width: 44px; height: 44px; min-width: 44px; min-height: 44px; flex-shrink: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
-      #modeicon { --mdc-icon-size: 22px; }
+      #curtemp { position: absolute; top: 50%; left: 37.03%; transform: translate(-50%,-50%); font-size: 16.5px; font-weight: 600; color: #fff; line-height: 1; text-align: center; white-space: nowrap; }
+      #curtemp .deg, #targettemp .deg { font-size: 10.5px; font-weight: 400; opacity: .75; }
+      .mode-col { position: relative; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; }
+      #thname { font-size: 11.5px; font-weight: 600; color: #fff; line-height: 1.15; text-align: center; max-width: 85px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      #modebtn { background: rgba(255,255,255,.08); border: none; cursor: pointer; width: 42px; height: 42px; min-width: 42px; min-height: 42px; flex-shrink: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+      #modeicon { --mdc-icon-size: 21px; }
       .temp-col { display: flex; flex-direction: column; align-items: center; justify-content: center; }
-      .steppers { display: flex; flex-direction: column; align-items: center; background: rgba(255,255,255,.06); border-radius: 22px; padding: 4px; gap: 7px; }
-      .steppers button { background: none; border: none; cursor: pointer; width: 32px; height: 26px; display: flex; align-items: center; justify-content: center; color: #fff; border-radius: 16px; }
-      .steppers button ha-icon { --mdc-icon-size: 16px; }
-      #targettemp { font-size: 15px; font-weight: 700; color: #fff; }
+      .steppers { display: flex; flex-direction: column; align-items: center; background: rgba(255,255,255,.06); border-radius: 20px; padding: 3px; gap: 6px; }
+      .steppers button { background: none; border: none; cursor: pointer; width: 30px; height: 24px; display: flex; align-items: center; justify-content: center; color: #fff; border-radius: 14px; }
+      .steppers button ha-icon { --mdc-icon-size: 15px; }
+      #targettemp { font-size: 14.5px; font-weight: 700; color: #fff; }
       #popup { position: absolute; inset: 0; background: rgba(28,28,30,.94); display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; opacity: 0; pointer-events: none; transition: opacity .15s ease; z-index: 5; border-radius: inherit; }
       #popup button { display: flex; flex-direction: column; align-items: center; gap: 3px; background: rgba(255,255,255,.06); border: 2px solid transparent; cursor: pointer; width: 52px; padding: 7px 0 5px; border-radius: 12px; font-size: 10px; color: #fff; }
       #popup button ha-icon { --mdc-icon-size: 20px; }
+
       @keyframes snowfall { 0%{transform:translate(0,-8px) rotate(0deg);opacity:0;} 12%{opacity:.6;} 30%{transform:translate(16px,25px) rotate(90deg);} 50%{transform:translate(-14px,55px) rotate(180deg);} 70%{transform:translate(12px,80px) rotate(270deg);} 100%{transform:translate(-6px,116px) rotate(360deg);opacity:0;} }
       @keyframes emberflicker { 0%{transform:translate(0,6px) scale(.5);opacity:0;box-shadow:0 0 2px #ffa94d;} 20%{opacity:.75;transform:translate(3px,-14px) scale(1.1);box-shadow:0 0 5px #ffb066;} 50%{transform:translate(-3px,-45px) scale(.8);opacity:.55;} 75%{transform:translate(4px,-75px) scale(1);opacity:.4;} 100%{transform:translate(-2px,-112px) scale(.3);opacity:0;box-shadow:0 0 1px transparent;} }
       .snowp { position: absolute; bottom: 0; color: #cfe8ff; animation: snowfall linear infinite; --mdc-icon-size: 1em; }
@@ -415,14 +440,13 @@ class AuraClimateCardEditor extends HTMLElement {
   _render() {
     if (!this._hass || !this._config) return;
     if (this._rendered) {
-      if (this._entityPicker) {
-        this._entityPicker.hass = this._hass;
-        this._entityPicker.value = this._config.entity || "";
-      }
+      if (this._entityPicker) this._entityPicker.hass = this._hass;
+      if (this._entityPicker) this._entityPicker.value = this._config.entity || "";
       if (this._nameField) this._nameField.value = this._config.name || "";
       if (this._particlesSwitch) this._particlesSwitch.checked = this._config.show_particles !== false;
       return;
     }
+
     this.innerHTML = "";
     const wrap = document.createElement("div");
     wrap.style.cssText = "display:flex;flex-direction:column;gap:16px;padding:8px 2px;";
@@ -458,6 +482,7 @@ class AuraClimateCardEditor extends HTMLElement {
       this._configChanged(Object.assign({}, this._config, { show_particles: ev.target.checked }));
     });
     this._particlesSwitch = particlesSwitch;
+
     switchRow.appendChild(switchLabel);
     switchRow.appendChild(particlesSwitch);
 
