@@ -366,16 +366,18 @@ class AuraClimateCard extends HTMLElement {
         box-shadow: none; 
         border: none; 
         padding: 0; 
+        border-radius: var(--ha-card-border-radius, 12px);
       }
       #root { 
-        background: transparent; 
+        background: var(--ha-card-background, var(--card-background-color, #fff)); 
         border-radius: var(--ha-card-border-radius, 12px); 
-        padding: 8px; 
+        padding: 12px; 
+        overflow: hidden;
       }
       #cardbg { 
         position: relative; 
-        background: transparent; 
-        border-radius: 12px; 
+        background: #1c1c1e; 
+        border-radius: 10px; 
         padding: 12px; 
         box-sizing: border-box; 
         overflow: hidden; 
@@ -432,10 +434,8 @@ class AuraClimateCardEditor extends HTMLElement {
   _render() {
     if (!this._hass || !this._config) return;
     if (this._rendered) {
-      if (this._entityPicker) {
-        this._entityPicker.hass = this._hass;
-        this._entityPicker.value = this._config.entity || "";
-      }
+      if (this._entityPicker) this._entityPicker.hass = this._hass;
+      if (this._entityPicker) this._entityPicker.value = this._config.entity || "";
       if (this._nameField) this._nameField.value = this._config.name || "";
       if (this._particlesSwitch) this._particlesSwitch.checked = this._config.show_particles !== false;
       return;
