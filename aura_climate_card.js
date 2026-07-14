@@ -1,667 +1,480 @@
-/*
+/**
  * Aura Climate Card
- * Compact 240-degree arc climate/thermostat card for Home Assistant Lovelace.
- * Built for Korkuttum.
+ * ------------------
+ * Home Assistant custom Lovelace kartı: dairesel (arc) sıcaklık göstergesi,
+ * dokunulunca açılan mod seçim overlay'i ve ısıtma/soğutma parçacık
+ * efektleri (kor/kar) ile.
  *
- * Usage (Lovelace YAML):
+ * Kurulum:
+ *  1) Bu dosyayı /config/www/aura_climate_card.js olarak kopyalayın.
+ *  2) Ayarlar > Panolar > Kaynaklar (Resources) altına ekleyin:
+ *       URL: /local/aura_climate_card.js
+ *       Tür: JavaScript Modülü
+ *  3) Karta "Aura Climate Card" adıyla UI editöründen ekleyin, entity
+ *     seçimini açılan yapılandırma ekranından yapın (kod yazmaya gerek yok).
+ *
+ * YAML örneği:
  *   type: custom:aura-climate-card
- *   entity: climate.your_thermostat
- *   name: Oturma Odasi        # optional, defaults to entity friendly_name
- *   grid_options:
- *     columns: 6
- *     rows: 2
+ *   entity: climate.oturma_odasi
+ *   name: Oturma Odası        # opsiyonel
+ *   show_particles: true      # opsiyonel, varsayılan true
  */
 
-const MODE_ICONS = {
-  off: "mdi:power",
-  heat: "mdi:fire",
-  cool: "mdi:snowflake",
-  heat_cool: "mdi:autorenew",
-  auto: "mdi:autorenew",
-  dry: "mdi:water-percent",
-  fan_only: "mdi:fan",
+const MODE_META = {
+  off: { icon: "mdi:power", label: "Kapalı", color: "#8a8a8a" },
+  heat: { icon: "mdi:fire", label: "Isıtma", color: "#ff8100" },
+  cool: { icon: "mdi:snowflake", label: "Soğutma", color: "#2b9af9" },
+  auto: { icon: "mdi:autorenew", label: "Otomatik", color: "#44739e" },
+  heat_cool: { icon: "mdi:autorenew", label: "Oto Isı/Soğuk", color: "#44739e" },
+  dry: { icon: "mdi:water-percent", label: "Kurutma", color: "#f2c94c" },
+  fan_only: { icon: "mdi:fan", label: "Fan", color: "#7ed6df" },
 };
+const DEFAULT_MODE_META = { icon: "mdi:help-circle", label: "Bilinmiyor", color: "#8a8a8a" };
 
-const MODE_LABELS_TR = {
-  off: "Kapali",
-  heat: "Isitma",
-  cool: "Sogutma",
-  heat_cool: "Otomatik",
-  auto: "Otomatik",
-  dry: "Kurutma",
-  fan_only: "Fan",
-};
+const R = 54, CX = 40, CY = 70;
+const SWEEP = (4 * Math.PI) / 3; // 240 derece
 
-const ACTION_COLORS = {
-  heating: "#ff8100",
-  cooling: "#2b9af9",
-  drying: "#efbd07",
-  fan: "#44739e",
-  idle: "#8a8a8a",
-  off: "#8a8a8a",
-};
-
-const MODE_COLORS = {
-  off: "#8a8a8a",
-  heat: "#ff8100",
-  cool: "#2b9af9",
-  heat_cool: "#009485",
-  auto: "#44739e",
-  dry: "#efbd07",
-  fan_only: "#44739e",
-};
-
-const FALLBACK_COLOR = "#44739e";
-
-const R = 46;
-const CX = 4;
-const CY = 50;
-const SWEEP = Math.PI; // 180 degrees
-const PHI_START = Math.PI / 2;
+function clamp(v, lo, hi) {
+  return Math.max(lo, Math.min(hi, v));
+}
 
 function pointFor(fraction) {
-  const f = Math.max(0, Math.min(1, fraction));
-  const phi = PHI_START - f * SWEEP;
+  const f = clamp(fraction, 0, 1);
+  const phi = (2 * Math.PI) / 3 - f * SWEEP;
   return { x: CX + R * Math.cos(phi), y: CY + R * Math.sin(phi) };
 }
 
 function arcSegment(f0, f1) {
-  const lo = Math.min(f0, f1);
-  const hi = Math.max(f0, f1);
+  const lo = Math.min(f0, f1), hi = Math.max(f0, f1);
   if (hi - lo < 0.001) return "";
-  const p0 = pointFor(lo);
-  const p1 = pointFor(hi);
+  const p0 = pointFor(lo), p1 = pointFor(hi);
   const largeArc = hi - lo > 0.75 ? 1 : 0;
-  return (
-    "M " + p0.x.toFixed(2) + " " + p0.y.toFixed(2) +
-    " A " + R + " " + R + " 0 " + largeArc + " 0 " +
-    p1.x.toFixed(2) + " " + p1.y.toFixed(2)
-  );
+  return `M ${p0.x.toFixed(2)} ${p0.y.toFixed(2)} A ${R} ${R} 0 ${largeArc} 0 ${p1.x.toFixed(2)} ${p1.y.toFixed(2)}`;
+}
+
+function fireEvent(node, type, detail, options) {
+  options = options || {};
+  detail = detail === null || detail === undefined ? {} : detail;
+  const event = new Event(type, {
+    bubbles: options.bubbles === undefined ? true : options.bubbles,
+    cancelable: Boolean(options.cancelable),
+    composed: options.composed === undefined ? true : options.composed,
+  });
+  event.detail = detail;
+  node.dispatchEvent(event);
+  return event;
 }
 
 class AuraClimateCard extends HTMLElement {
-  constructor() {
-    super();
-    this.attachShadow({ mode: "open" });
-    this._popupOpen = false;
-    this._optimisticUntil = 0;
-    this._optimisticTemp = null;
-    this._optimisticMode = null;
-    this._built = false;
-    this._lastParticleMode = null;
-    this._boundOutsideClick = this._handleOutsideClick.bind(this);
+  static getConfigElement() {
+    return document.createElement("aura-climate-card-editor");
+  }
+
+  static getStubConfig(hass) {
+    const climates = hass ? Object.keys(hass.states).filter((e) => e.startsWith("climate.")) : [];
+    return { entity: climates[0] || "", show_particles: true };
   }
 
   setConfig(config) {
-    if (!config.entity) {
-      throw new Error('Lutfen bir "entity" tanimlayin (orn. climate.oturma_odasi)');
+    if (!config || !config.entity) {
+      throw new Error("Lütfen bir climate entity seçin (entity alanı zorunludur)");
     }
-    this._config = config;
+    this._config = Object.assign({ show_particles: true }, config);
+    this._popupOpen = false;
+    this._optimisticTarget = null;
+    this._optimisticMode = null;
+    if (!this._built) this._buildDom();
+    else this._updateCard();
   }
 
   set hass(hass) {
     this._hass = hass;
+    if (!this._built) return;
     const stateObj = hass.states[this._config.entity];
-
     if (!stateObj) {
-      this._stateObj = null;
-      this._renderNotFound();
+      this._showError(`Entity bulunamadı: ${this._config.entity}`);
       return;
     }
-
-    if (this._optimisticUntil && Date.now() < this._optimisticUntil) {
-      const tempCaughtUp =
-        this._optimisticTemp == null ||
-        stateObj.attributes.temperature === this._optimisticTemp;
-      const modeCaughtUp =
-        this._optimisticMode == null || stateObj.state === this._optimisticMode;
-      if (!(tempCaughtUp && modeCaughtUp)) {
-        return;
-      }
-      this._optimisticUntil = 0;
-      this._optimisticTemp = null;
-      this._optimisticMode = null;
-    }
-
     this._stateObj = stateObj;
-    const sig = JSON.stringify(stateObj.state) + JSON.stringify(stateObj.attributes);
-    if (sig !== this._lastSig) {
-      this._lastSig = sig;
-      if (!this._built) {
-        this._buildStructure();
-      }
-      this._update();
-    }
+    if (this._optimisticMode !== null && stateObj.state === this._optimisticMode) this._optimisticMode = null;
+    const curTarget = stateObj.attributes.temperature !== undefined ? stateObj.attributes.temperature : stateObj.attributes.target_temp_high;
+    if (this._optimisticTarget !== null && curTarget === this._optimisticTarget) this._optimisticTarget = null;
+    this._updateCard();
   }
 
-  connectedCallback() {
-    document.addEventListener("click", this._boundOutsideClick, true);
-  }
-
-  disconnectedCallback() {
-    document.removeEventListener("click", this._boundOutsideClick, true);
-  }
-
-  _handleOutsideClick(e) {
-    if (!this._popupOpen) return;
-    const path = e.composedPath();
-    if (!path.includes(this)) {
-      this._popupOpen = false;
-      this._renderPopup();
-    }
+  get hass() {
+    return this._hass;
   }
 
   getCardSize() {
-    return 2;
+    return 3;
   }
 
-  getGridOptions() {
+  connectedCallback() {
+    if (this._config && !this._built) this._buildDom();
+  }
+
+  _buildDom() {
+    this.attachShadow({ mode: "open" });
+    this.shadowRoot.innerHTML = `
+      <style>${this._css()}</style>
+      <ha-card>
+        <div id="errorbox" style="display:none;padding:16px;color:#ff6961;font-size:13px;"></div>
+        <div id="root">
+          <div id="cardbg">
+            <div id="particles"></div>
+            <div id="tint"></div>
+            <div id="wrap">
+              <div class="arc-col">
+                <div class="arc-inner">
+                  <svg id="arcsvg" viewBox="0 0 108 140">
+                    <path id="track" class="track"/>
+                    <path id="lightfill"/>
+                    <path id="darkfill"/>
+                  </svg>
+                  <div id="curtemp"></div>
+                </div>
+              </div>
+              <div class="mode-col">
+                <div id="thname"></div>
+                <button id="modebtn" aria-label="Mod seç">
+                  <ha-icon id="modeicon"></ha-icon>
+                </button>
+              </div>
+              <div class="temp-col">
+                <div class="steppers">
+                  <button id="plus"><ha-icon icon="mdi:plus"></ha-icon></button>
+                  <div id="targettemp"></div>
+                  <button id="minus"><ha-icon icon="mdi:minus"></ha-icon></button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div id="popup"></div>
+        </div>
+      </ha-card>
+    `;
+    this._els = {
+      errorbox: this.shadowRoot.getElementById("errorbox"),
+      root: this.shadowRoot.getElementById("root"),
+      particles: this.shadowRoot.getElementById("particles"),
+      tint: this.shadowRoot.getElementById("tint"),
+      track: this.shadowRoot.getElementById("track"),
+      lightfill: this.shadowRoot.getElementById("lightfill"),
+      darkfill: this.shadowRoot.getElementById("darkfill"),
+      curtemp: this.shadowRoot.getElementById("curtemp"),
+      thname: this.shadowRoot.getElementById("thname"),
+      modebtn: this.shadowRoot.getElementById("modebtn"),
+      modeicon: this.shadowRoot.getElementById("modeicon"),
+      targettemp: this.shadowRoot.getElementById("targettemp"),
+      plus: this.shadowRoot.getElementById("plus"),
+      minus: this.shadowRoot.getElementById("minus"),
+      popup: this.shadowRoot.getElementById("popup"),
+    };
+    this._els.modebtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      this._popupOpen = !this._popupOpen;
+      this._updateCard();
+    });
+    this._els.popup.addEventListener("click", (e) => {
+      if (e.target === this._els.popup) {
+        this._popupOpen = false;
+        this._updateCard();
+      }
+    });
+    this._els.plus.addEventListener("click", () => this._adjustTarget(this._step()));
+    this._els.minus.addEventListener("click", () => this._adjustTarget(-this._step()));
+    this._particlesBuilt = false;
+    this._built = true;
+    if (this._hass && this._config) {
+      const stateObj = this._hass.states[this._config.entity];
+      if (stateObj) {
+        this._stateObj = stateObj;
+        this._updateCard();
+      } else {
+        this._showError(`Entity bulunamadı: ${this._config.entity}`);
+      }
+    }
+  }
+
+  _showError(msg) {
+    if (!this._built) return;
+    this._els.errorbox.textContent = msg;
+    this._els.errorbox.style.display = "block";
+    this._els.root.style.display = "none";
+  }
+
+  _clearError() {
+    this._els.errorbox.style.display = "none";
+    this._els.root.style.display = "block";
+  }
+
+  _minMax() {
+    const attrs = this._stateObj.attributes;
     return {
-      columns: 6,
-      rows: 2,
-      min_columns: 4,
-      max_columns: 12,
+      min: attrs.min_temp !== undefined ? attrs.min_temp : 7,
+      max: attrs.max_temp !== undefined ? attrs.max_temp : 35,
     };
   }
 
-  static getStubConfig() {
-    return { entity: "" };
+  _step() {
+    return this._stateObj.attributes.target_temp_step || 0.5;
   }
 
-  _callService(domain, service, data) {
-    this._hass.callService(domain, service, data);
+  _targetTemp() {
+    if (this._optimisticTarget !== null) return this._optimisticTarget;
+    const attrs = this._stateObj.attributes;
+    if (attrs.temperature !== undefined && attrs.temperature !== null) return attrs.temperature;
+    if (attrs.target_temp_high !== undefined && attrs.target_temp_high !== null) return attrs.target_temp_high;
+    return attrs.current_temperature != null ? attrs.current_temperature : this._minMax().min;
   }
 
-  _setHvacMode(mode, e) {
-    if (e) e.stopPropagation();
+  _currentTemp() {
+    const attrs = this._stateObj.attributes;
+    return attrs.current_temperature != null ? attrs.current_temperature : this._targetTemp();
+  }
+
+  _mode() {
+    return this._optimisticMode !== null ? this._optimisticMode : this._stateObj.state;
+  }
+
+  _adjustTarget(delta) {
+    const { min, max } = this._minMax();
+    const attrs = this._stateObj.attributes;
+    if (attrs.temperature !== undefined && attrs.temperature !== null) {
+      const newTemp = clamp(Math.round((this._targetTemp() + delta) * 10) / 10, min, max);
+      this._optimisticTarget = newTemp;
+      this._updateCard();
+      this._hass.callService("climate", "set_temperature", {
+        entity_id: this._config.entity,
+        temperature: newTemp,
+      });
+    } else if (attrs.target_temp_high !== undefined && attrs.target_temp_high !== null) {
+      const newHigh = clamp(Math.round((this._targetTemp() + delta) * 10) / 10, min, max);
+      this._optimisticTarget = newHigh;
+      this._updateCard();
+      this._hass.callService("climate", "set_temperature", {
+        entity_id: this._config.entity,
+        target_temp_low: attrs.target_temp_low,
+        target_temp_high: newHigh,
+      });
+    }
+  }
+
+  _setMode(mode) {
     this._optimisticMode = mode;
-    this._optimisticUntil = Date.now() + 6000;
-    this._stateObj = { ...this._stateObj, state: mode };
     this._popupOpen = false;
-    this._update();
-    this._callService("climate", "set_hvac_mode", {
+    this._updateCard();
+    this._hass.callService("climate", "set_hvac_mode", {
       entity_id: this._config.entity,
       hvac_mode: mode,
     });
   }
 
-  _changeTemp(delta, e) {
-    if (e) e.stopPropagation();
-    const attrs = this._stateObj.attributes;
-    const step = attrs.target_temp_step || 0.5;
-    let current = attrs.temperature;
-    if (current == null) return;
-    let next = Math.round((current + delta * step) * 10) / 10;
-    const min = attrs.min_temp ?? 7;
-    const max = attrs.max_temp ?? 35;
-    next = Math.min(max, Math.max(min, next));
-
-    this._optimisticTemp = next;
-    this._optimisticUntil = Date.now() + 6000;
-    this._stateObj = {
-      ...this._stateObj,
-      attributes: { ...this._stateObj.attributes, temperature: next },
-    };
-    this._update();
-
-    this._callService("climate", "set_temperature", {
-      entity_id: this._config.entity,
-      temperature: next,
-    });
-  }
-
-  _togglePopup(e) {
-    e.stopPropagation();
-    this._popupOpen = !this._popupOpen;
-    this._renderPopup();
-  }
-
-  _renderNotFound() {
-    this._built = false;
-    this.shadowRoot.innerHTML = `
-      <ha-card>
-        <div class="not-found">Varlik bulunamadi: ${this._config.entity}</div>
-      </ha-card>
-      <style>
-        ha-card { padding: 16px; }
-        .not-found { color: var(--error-color, red); font-size: 14px; }
-      </style>
-    `;
-  }
-
-  _buildStructure() {
-    this.shadowRoot.innerHTML = `
-      <ha-card>
-        <div class="cardbg">
-          <div class="particles">
-            <div class="snow-layer"></div>
-            <div class="ember-layer"></div>
-          </div>
-          <div class="tint"></div>
-          <div class="content">
-            <div class="wrap">
-              <div class="arc-col">
-                <div class="arc-inner">
-                  <svg class="arc-svg" viewBox="0 0 54 100" preserveAspectRatio="xMinYMid meet">
-                    <path class="track" d="" />
-                    <path class="lightfill" d="" />
-                    <path class="darkfill" d="" />
-                    <text class="curtemp-text" x="25" y="50" text-anchor="middle" dominant-baseline="central" font-size="14" font-weight="600" fill="#ffffff"><tspan class="curtemp-val"></tspan><tspan class="curtemp-unit" dy="-4" font-size="8"></tspan></text>
-                  </svg>
-                </div>
-              </div>
-              <div class="mode-col">
-                <div class="thname"></div>
-                <button class="modebtn"><ha-icon class="modeicon"></ha-icon></button>
-              </div>
-              <div class="temp-col">
-                <div class="capsule">
-                  <button class="btn-plus"><ha-icon icon="mdi:plus"></ha-icon></button>
-                  <div class="targettemp"></div>
-                  <button class="btn-minus"><ha-icon icon="mdi:minus"></ha-icon></button>
-                </div>
-              </div>
-            </div>
-            <div class="popup"></div>
-          </div>
-        </div>
-      </ha-card>
-
-      <style>
-        :host {
-          display: block;
-          width: 100%;
-          height: 100%;
-          box-sizing: border-box;
-        }
-        ha-card {
-          height: 100%;
-          box-sizing: border-box;
-          padding: 0;
-          display: flex;
-          align-items: stretch;
-          overflow: hidden;
-          background: transparent;
-          box-shadow: none;
-          border-radius: var(--ha-card-border-radius, 12px);
-        }
-        .cardbg {
-          position: relative;
-          width: 100%;
-          height: 100%;
-          background: #1c1c1e;
-          box-sizing: border-box;
-          padding: 4px 6px;
-          overflow: hidden;
-          border-radius: var(--ha-card-border-radius, 12px);
-        }
-        .particles, .tint {
-          position: absolute;
-          inset: 0;
-          pointer-events: none;
-          z-index: 0;
-          overflow: hidden;
-        }
-        .tint { transition: background 0.3s ease; }
-        .content { position: relative; z-index: 1; height: 100%; box-sizing: border-box; }
-        .thname {
-          font-size: 12px;
-          font-weight: 600;
-          color: #ffffff;
-          line-height: 1.15;
-          text-align: center;
-          max-width: 90px;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-        }
-        .wrap {
-          display: grid;
-          grid-template-columns: 1fr 72px 1fr;
-          align-items: center;
-          gap: 10px;
-          height: 100%;
-          padding: 0 4px;
-          box-sizing: border-box;
-        }
-        .arc-col {
-          position: relative;
-          display: flex;
-          align-items: center;
-          justify-content: flex-start;
-          height: 100%;
-          min-width: 0;
-        }
-        .arc-inner {
-          position: relative;
-          width: 59px;
-          height: 110px;
-          max-height: 100%;
-          flex-shrink: 0;
-        }
-        .arc-svg {
-          width: 59px;
-          height: 100%;
-          max-height: 110px;
-          display: block;
-        }
-        .track {
-          fill: none;
-          stroke: #555;
-          opacity: 0.25;
-          stroke-width: 3;
-          stroke-linecap: round;
-        }
-        .lightfill, .darkfill {
-          fill: none;
-          stroke-width: 6;
-          stroke-linecap: round;
-          transition: d 0.15s ease, stroke 0.15s ease, stroke-opacity 0.15s ease;
-        }
-        .curtemp-text { pointer-events: none; }
-        .mode-col {
-          position: relative;
-          height: 100%;
-          width: 100%;
-          display: grid;
-          grid-template-rows: minmax(0, 1fr) auto minmax(0, 1fr);
-          justify-items: center;
-          overflow: hidden;
-          gap: 4px;
-        }
-        .mode-col .thname {
-          grid-row: 1;
-          align-self: end;
-          width: 100%;
-          max-width: 100%;
-        }
-        .mode-col .modebtn {
-          grid-row: 2;
-        }
-        .modebtn {
-          background: rgba(255,255,255,0.08);
-          border: none;
-          cursor: pointer;
-          width: 44px;
-          height: 44px;
-          min-width: 44px;
-          min-height: 44px;
-          flex-shrink: 0;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: #ffffff;
-        }
-        .modeicon { --mdc-icon-size: 22px; }
-        .popup {
-          position: absolute;
-          inset: 0;
-          background: rgba(28,28,30,0.94);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 10px;
-          opacity: 0;
-          pointer-events: none;
-          transition: opacity 0.15s ease;
-          z-index: 5;
-          border-radius: inherit;
-        }
-        .popup.open {
-          opacity: 1;
-          pointer-events: auto;
-        }
-        .popup-item {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 3px;
-          background: rgba(255,255,255,0.06);
-          border: 2px solid transparent;
-          cursor: pointer;
-          width: 52px;
-          padding: 7px 0 5px;
-          border-radius: 12px;
-          font-size: 10px;
-          color: #ffffff;
-        }
-        .popup-item:hover { background: rgba(255,255,255,0.12); }
-        .popup-item ha-icon { --mdc-icon-size: 20px; }
-        .temp-col {
-          display: flex;
-          flex-direction: column;
-          align-items: flex-end;
-          justify-content: center;
-          min-width: 0;
-        }
-        .capsule {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          background: rgba(255,255,255,0.06);
-          border-radius: 22px;
-          padding: 4px;
-          gap: 7px;
-        }
-        .capsule button {
-          background: none;
-          border: none;
-          cursor: pointer;
-          width: 32px;
-          height: 26px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: #ffffff;
-          border-radius: 16px;
-        }
-        .capsule button:hover { background: rgba(255,255,255,0.12); }
-        .capsule button ha-icon { --mdc-icon-size: 16px; }
-        .targettemp {
-          font-size: 15px;
-          font-weight: 700;
-          color: #ffffff;
-        }
-        .targettemp .deg { font-size: 11px; font-weight: 400; opacity: 0.7; }
-
-        @keyframes snowfall {
-          0% { transform: translate(0,-8px) rotate(0deg); opacity: 0; }
-          12% { opacity: .6; }
-          30% { transform: translate(16px,25px) rotate(90deg); }
-          50% { transform: translate(-14px,55px) rotate(180deg); }
-          70% { transform: translate(12px,80px) rotate(270deg); }
-          100% { transform: translate(-6px,116px) rotate(360deg); opacity: 0; }
-        }
-        @keyframes emberflicker {
-          0% { transform: translate(0,6px) scale(.5); opacity: 0; }
-          20% { opacity: .75; transform: translate(3px,-14px) scale(1.1); }
-          50% { transform: translate(-3px,-45px) scale(.8); opacity: .55; }
-          75% { transform: translate(4px,-75px) scale(1); opacity: .4; }
-          100% { transform: translate(-2px,-112px) scale(.3); opacity: 0; }
-        }
-        .snowp {
-          position: absolute;
-          bottom: 0;
-          color: #cfe8ff;
-          animation: snowfall linear infinite;
-          --mdc-icon-size: 10px;
-        }
-        .emberp {
-          position: absolute;
-          bottom: 0;
-          width: 3px;
-          height: 3px;
-          border-radius: 50%;
-          background: #ffa94d;
-          box-shadow: 0 0 4px #ffa94d;
-          animation: emberflicker ease-in infinite;
-        }
-        .snow-layer.hidden, .ember-layer.hidden { display: none; }
-      </style>
-    `;
-
-    this._el = {
-      root: this.shadowRoot,
-      track: this.shadowRoot.querySelector(".track"),
-      light: this.shadowRoot.querySelector(".lightfill"),
-      dark: this.shadowRoot.querySelector(".darkfill"),
-      curtempVal: this.shadowRoot.querySelector(".curtemp-val"),
-      curtempUnit: this.shadowRoot.querySelector(".curtemp-unit"),
-      targettemp: this.shadowRoot.querySelector(".targettemp"),
-      thname: this.shadowRoot.querySelector(".thname"),
-      modebtn: this.shadowRoot.querySelector(".modebtn"),
-      modeicon: this.shadowRoot.querySelector(".modeicon"),
-      popup: this.shadowRoot.querySelector(".popup"),
-      tint: this.shadowRoot.querySelector(".tint"),
-      snowLayer: this.shadowRoot.querySelector(".snow-layer"),
-      emberLayer: this.shadowRoot.querySelector(".ember-layer"),
-      btnPlus: this.shadowRoot.querySelector(".btn-plus"),
-      btnMinus: this.shadowRoot.querySelector(".btn-minus"),
-    };
-
-    let snowHtml = "";
+  _setupParticles() {
+    if (this._particlesBuilt) return;
+    let html = "";
     for (let i = 0; i < 7; i++) {
       const left = 5 + Math.random() * 90;
       const dur = (3.5 + Math.random() * 2.5).toFixed(2);
       const delay = (Math.random() * 3.5).toFixed(2);
-      const size = Math.round(8 + Math.random() * 4);
-      snowHtml += `<ha-icon class="snowp" icon="mdi:snowflake" style="left:${left}%;--mdc-icon-size:${size}px;animation-duration:${dur}s;animation-delay:${delay}s;"></ha-icon>`;
+      const size = (8 + Math.random() * 4).toFixed(1);
+      html += `<ha-icon class="snowp" icon="mdi:snowflake" style="left:${left}%;font-size:${size}px;animation-duration:${dur}s;animation-delay:${delay}s;"></ha-icon>`;
     }
-    this._el.snowLayer.innerHTML = snowHtml;
-
-    let emberHtml = "";
     for (let i = 0; i < 8; i++) {
       const left = 8 + Math.random() * 84;
       const dur = (2 + Math.random() * 1.8).toFixed(2);
       const delay = (Math.random() * 3).toFixed(2);
-      emberHtml += `<span class="emberp" style="left:${left}%;animation-duration:${dur}s;animation-delay:${delay}s;"></span>`;
+      html += `<span class="emberp" style="left:${left}%;animation-duration:${dur}s;animation-delay:${delay}s;"></span>`;
     }
-    this._el.emberLayer.innerHTML = emberHtml;
-
-    this._el.modebtn.addEventListener("click", (e) => this._togglePopup(e));
-    this._el.popup.addEventListener("click", (e) => {
-      if (e.target === this._el.popup) {
-        e.stopPropagation();
-        this._popupOpen = false;
-        this._renderPopup();
-      }
-    });
-    this._el.btnPlus.addEventListener("click", (e) => this._changeTemp(1, e));
-    this._el.btnMinus.addEventListener("click", (e) => this._changeTemp(-1, e));
-
-    this._built = true;
+    this._els.particles.innerHTML = html;
+    this._particlesBuilt = true;
   }
 
-  _renderPopup() {
+  _updateCard() {
     if (!this._built || !this._stateObj) return;
-    const stateObj = this._stateObj;
-    const hvacMode = stateObj.state;
-    const modes = stateObj.attributes.hvac_modes || [hvacMode];
-    const el = this._el;
+    this._clearError();
+    const attrs = this._stateObj.attributes;
+    const mode = this._mode();
+    const meta = MODE_META[mode] || DEFAULT_MODE_META;
+    const { min, max } = this._minMax();
+    const cur = clamp(this._currentTemp(), min, max);
+    const tgt = clamp(this._targetTemp(), min, max);
+    const unit = (this._hass.config && this._hass.config.unit_system && this._hass.config.unit_system.temperature) || "°C";
+    const isCooling = mode === "cool";
 
-    el.popup.innerHTML = modes
+    const fCurrent = (cur - min) / (max - min);
+    const fTarget = (tgt - min) / (max - min);
+
+    this._els.track.setAttribute("d", arcSegment(0, 1));
+    if (isCooling) {
+      this._els.darkfill.setAttribute("d", arcSegment(fCurrent, 1));
+      this._els.lightfill.setAttribute("d", arcSegment(fTarget, fCurrent));
+    } else {
+      this._els.darkfill.setAttribute("d", arcSegment(0, fCurrent));
+      this._els.lightfill.setAttribute("d", arcSegment(fCurrent, fTarget));
+    }
+    this._els.lightfill.style.stroke = meta.color;
+    this._els.lightfill.style.strokeOpacity = "0.28";
+    this._els.darkfill.style.stroke = meta.color;
+    this._els.darkfill.style.strokeOpacity = "1";
+
+    this._els.curtemp.innerHTML = `${cur.toFixed(1)}<span class="deg">${unit}</span>`;
+    this._els.targettemp.innerHTML = `${tgt.toFixed(1)}<span class="deg">${unit}</span>`;
+    this._els.modebtn.style.color = meta.color;
+    this._els.modebtn.style.background = meta.color + "26";
+    this._els.modeicon.setAttribute("icon", meta.icon);
+    this._els.thname.textContent = this._config.name || attrs.friendly_name || this._config.entity;
+    this._els.tint.style.background = `radial-gradient(circle at 30% 40%, ${meta.color}22, transparent 70%)`;
+
+    const action = attrs.hvac_action;
+    const showParticles = this._config.show_particles !== false;
+    if (showParticles) this._setupParticles();
+    const snowOn = showParticles && (action ? action === "cooling" : mode === "cool");
+    const emberOn = showParticles && (action ? action === "heating" : mode === "heat");
+    this.shadowRoot.querySelectorAll(".snowp").forEach((el) => {
+      el.style.display = snowOn ? "block" : "none";
+    });
+    this.shadowRoot.querySelectorAll(".emberp").forEach((el) => {
+      el.style.display = emberOn ? "block" : "none";
+    });
+
+    const supported = (attrs.hvac_modes && attrs.hvac_modes.length ? attrs.hvac_modes : [mode]);
+    if (!supported.includes(mode)) supported.push(mode);
+    this._els.popup.innerHTML = supported
       .map((m) => {
-        const active = m === hvacMode;
-        const c = MODE_COLORS[m] || FALLBACK_COLOR;
-        const style = active
-          ? `color:${c};border-color:${c};background:${c}26;`
-          : "";
-        return `
-          <button class="popup-item" data-mode="${m}" style="${style}">
-            <ha-icon icon="${MODE_ICONS[m] || "mdi:thermostat"}"></ha-icon>
-            <span>${MODE_LABELS_TR[m] || m}</span>
-          </button>
-        `;
+        const mm = MODE_META[m] || DEFAULT_MODE_META;
+        const active = m === mode;
+        const st = active ? `color:${mm.color};border-color:${mm.color};background:${mm.color}26;` : "";
+        return `<button data-mode="${m}" style="${st}"><ha-icon icon="${mm.icon}"></ha-icon><span>${mm.label}</span></button>`;
       })
       .join("");
-
-    el.popup.classList.toggle("open", this._popupOpen);
-    el.popup.querySelectorAll(".popup-item").forEach((btn) => {
-      btn.addEventListener("click", (e) =>
-        this._setHvacMode(btn.getAttribute("data-mode"), e)
-      );
+    this._els.popup.style.opacity = this._popupOpen ? "1" : "0";
+    this._els.popup.style.pointerEvents = this._popupOpen ? "auto" : "none";
+    this._els.popup.querySelectorAll("button").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this._setMode(btn.getAttribute("data-mode"));
+      });
     });
   }
 
-  _update() {
-    if (!this._built || !this._stateObj) return;
-    const stateObj = this._stateObj;
-    const attrs = stateObj.attributes;
-    const el = this._el;
-
-    const hvacMode = stateObj.state;
-    const hvacAction = attrs.hvac_action;
-    const min = attrs.min_temp ?? 7;
-    const max = attrs.max_temp ?? 35;
-    const target = attrs.temperature;
-    const current = attrs.current_temperature ?? target;
-
-    const actionKey = (hvacAction || "").toLowerCase();
-    const modeKey = (hvacMode || "").toLowerCase();
-    const isActiveAction =
-      actionKey && actionKey !== "idle" && actionKey !== "off" && ACTION_COLORS[actionKey];
-    const color = isActiveAction
-      ? ACTION_COLORS[actionKey]
-      : MODE_COLORS[modeKey] || FALLBACK_COLOR;
-
-    const fTarget = target != null && max > min ? (target - min) / (max - min) : 0;
-    const fCurrent = current != null && max > min ? (current - min) / (max - min) : 0;
-    const isCooling = modeKey === "cool";
-
-    const fMin = Math.min(fCurrent, fTarget);
-    const fMax = Math.max(fCurrent, fTarget);
-
-    if (isCooling) {
-      el.track.setAttribute("d", arcSegment(0, fMin));
-      el.light.setAttribute("d", arcSegment(fMin, fMax));
-      el.dark.setAttribute("d", arcSegment(fMax, 1));
-    } else {
-      el.dark.setAttribute("d", arcSegment(0, fMin));
-      el.light.setAttribute("d", arcSegment(fMin, fMax));
-      el.track.setAttribute("d", arcSegment(fMax, 1));
-    }
-    el.light.style.stroke = color;
-    el.light.style.strokeOpacity = "0.5";
-    el.dark.style.stroke = color;
-    el.dark.style.strokeOpacity = "1";
-
-    const unit =
-      (this._hass && this._hass.config && this._hass.config.unit_system && this._hass.config.unit_system.temperature) ||
-      attrs.temperature_unit ||
-      "°C";
-
-    el.curtempVal.textContent = current != null ? current.toFixed(1) : "--";
-    el.curtempUnit.textContent = unit;
-    el.targettemp.innerHTML =
-      (target != null ? target.toFixed(1) : "--") +
-      '<span class="deg">' + unit + '</span>';
-
-    el.thname.textContent =
-      this._config.name || attrs.friendly_name || this._config.entity;
-
-    el.modebtn.style.color = color;
-    el.modebtn.style.background = color + "26";
-    el.modeicon.setAttribute("icon", MODE_ICONS[hvacMode] || "mdi:thermostat");
-
-    el.tint.style.background = `radial-gradient(circle at 30% 40%, ${color}22, transparent 70%)`;
-
-    const particleMode = modeKey === "cool" ? "cool" : modeKey === "heat" ? "heat" : "none";
-    if (particleMode !== this._lastParticleMode) {
-      el.snowLayer.classList.toggle("hidden", particleMode !== "cool");
-      el.emberLayer.classList.toggle("hidden", particleMode !== "heat");
-      this._lastParticleMode = particleMode;
-    }
-
-    this._renderPopup();
+  _css() {
+    return `
+      ha-card { background: transparent; box-shadow: none; border: none; padding: 0; }
+      #root { background: var(--ha-card-background, var(--card-background-color, #fff)); border-radius: var(--ha-card-border-radius, 12px); padding: 1.1rem; }
+      #cardbg { position: relative; background: #1c1c1e; border-radius: 12px; padding: 8px 10px; box-sizing: border-box; overflow: hidden; }
+      #particles { position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+      #tint { position: absolute; inset: 0; pointer-events: none; z-index: 0; transition: background .3s ease; }
+      #wrap { position: relative; z-index: 1; display: grid; grid-template-columns: 1fr 0.9fr 0.75fr; align-items: center; gap: 2px; height: 110px; }
+      .arc-col { position: relative; display: flex; align-items: center; justify-content: center; height: 100%; }
+      .arc-inner { position: relative; height: 100%; display: inline-block; }
+      #arcsvg { height: 100%; width: auto; display: block; }
+      .track { fill: none; stroke: #555; opacity: .35; stroke-width: 13; stroke-linecap: round; }
+      #lightfill, #darkfill { fill: none; stroke-width: 13; stroke-linecap: round; transition: d .15s ease, stroke .15s ease; }
+      #curtemp { position: absolute; top: 50%; left: 37.03%; transform: translate(-50%,-50%); font-size: 17px; font-weight: 600; color: #fff; line-height: 1; text-align: center; white-space: nowrap; }
+      #curtemp .deg, #targettemp .deg { font-size: 11px; font-weight: 400; opacity: .7; }
+      .mode-col { position: relative; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
+      #thname { font-size: 12px; font-weight: 600; color: #fff; line-height: 1.15; text-align: center; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      #modebtn { background: rgba(255,255,255,.08); border: none; cursor: pointer; width: 44px; height: 44px; min-width: 44px; min-height: 44px; flex-shrink: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+      #modeicon { --mdc-icon-size: 22px; }
+      .temp-col { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+      .steppers { display: flex; flex-direction: column; align-items: center; background: rgba(255,255,255,.06); border-radius: 22px; padding: 4px; gap: 7px; }
+      .steppers button { background: none; border: none; cursor: pointer; width: 32px; height: 26px; display: flex; align-items: center; justify-content: center; color: #fff; border-radius: 16px; }
+      .steppers button ha-icon { --mdc-icon-size: 16px; }
+      #targettemp { font-size: 15px; font-weight: 700; color: #fff; }
+      #popup { position: absolute; inset: 0; background: rgba(28,28,30,.94); display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; opacity: 0; pointer-events: none; transition: opacity .15s ease; z-index: 5; border-radius: inherit; }
+      #popup button { display: flex; flex-direction: column; align-items: center; gap: 3px; background: rgba(255,255,255,.06); border: 2px solid transparent; cursor: pointer; width: 52px; padding: 7px 0 5px; border-radius: 12px; font-size: 10px; color: #fff; }
+      #popup button ha-icon { --mdc-icon-size: 20px; }
+      @keyframes snowfall { 0%{transform:translate(0,-8px) rotate(0deg);opacity:0;} 12%{opacity:.6;} 30%{transform:translate(16px,25px) rotate(90deg);} 50%{transform:translate(-14px,55px) rotate(180deg);} 70%{transform:translate(12px,80px) rotate(270deg);} 100%{transform:translate(-6px,116px) rotate(360deg);opacity:0;} }
+      @keyframes emberflicker { 0%{transform:translate(0,6px) scale(.5);opacity:0;box-shadow:0 0 2px #ffa94d;} 20%{opacity:.75;transform:translate(3px,-14px) scale(1.1);box-shadow:0 0 5px #ffb066;} 50%{transform:translate(-3px,-45px) scale(.8);opacity:.55;} 75%{transform:translate(4px,-75px) scale(1);opacity:.4;} 100%{transform:translate(-2px,-112px) scale(.3);opacity:0;box-shadow:0 0 1px transparent;} }
+      .snowp { position: absolute; bottom: 0; color: #cfe8ff; animation: snowfall linear infinite; --mdc-icon-size: 1em; }
+      .emberp { position: absolute; bottom: 0; width: 3px; height: 3px; border-radius: 50%; background: #ffa94d; animation: emberflicker ease-in infinite; }
+    `;
   }
 }
 
 customElements.define("aura-climate-card", AuraClimateCard);
 
+class AuraClimateCardEditor extends HTMLElement {
+  setConfig(config) {
+    this._config = Object.assign({}, config);
+    this._render();
+  }
+
+  set hass(hass) {
+    this._hass = hass;
+    this._render();
+  }
+
+  _configChanged(newConfig) {
+    this._config = newConfig;
+    fireEvent(this, "config-changed", { config: this._config });
+  }
+
+  _render() {
+    if (!this._hass || !this._config) return;
+    if (this._rendered) {
+      if (this._entityPicker) {
+        this._entityPicker.hass = this._hass;
+        this._entityPicker.value = this._config.entity || "";
+      }
+      if (this._nameField) this._nameField.value = this._config.name || "";
+      if (this._particlesSwitch) this._particlesSwitch.checked = this._config.show_particles !== false;
+      return;
+    }
+    this.innerHTML = "";
+    const wrap = document.createElement("div");
+    wrap.style.cssText = "display:flex;flex-direction:column;gap:16px;padding:8px 2px;";
+
+    const entityPicker = document.createElement("ha-entity-picker");
+    entityPicker.hass = this._hass;
+    entityPicker.label = "Klima Entity (zorunlu)";
+    entityPicker.value = this._config.entity || "";
+    entityPicker.includeDomains = ["climate"];
+    entityPicker.required = true;
+    entityPicker.addEventListener("value-changed", (ev) => {
+      ev.stopPropagation();
+      this._configChanged(Object.assign({}, this._config, { entity: ev.detail.value }));
+    });
+    this._entityPicker = entityPicker;
+
+    const nameField = document.createElement("ha-textfield");
+    nameField.label = "Görünen isim (opsiyonel)";
+    nameField.value = this._config.name || "";
+    nameField.addEventListener("change", (ev) => {
+      this._configChanged(Object.assign({}, this._config, { name: ev.target.value }));
+    });
+    this._nameField = nameField;
+
+    const switchRow = document.createElement("div");
+    switchRow.style.cssText = "display:flex;align-items:center;justify-content:space-between;";
+    const switchLabel = document.createElement("span");
+    switchLabel.textContent = "Kar / ateş parçacık efektleri";
+    switchLabel.style.cssText = "font-size:14px;color:var(--primary-text-color);";
+    const particlesSwitch = document.createElement("ha-switch");
+    particlesSwitch.checked = this._config.show_particles !== false;
+    particlesSwitch.addEventListener("change", (ev) => {
+      this._configChanged(Object.assign({}, this._config, { show_particles: ev.target.checked }));
+    });
+    this._particlesSwitch = particlesSwitch;
+    switchRow.appendChild(switchLabel);
+    switchRow.appendChild(particlesSwitch);
+
+    wrap.appendChild(entityPicker);
+    wrap.appendChild(nameField);
+    wrap.appendChild(switchRow);
+    this.appendChild(wrap);
+    this._rendered = true;
+  }
+}
+
+customElements.define("aura-climate-card-editor", AuraClimateCardEditor);
+
 window.customCards = window.customCards || [];
 window.customCards.push({
   type: "aura-climate-card",
   name: "Aura Climate Card",
-  description: "Kompakt, 240 derece yaylı iklim/termostat kartı.",
+  description: "Dairesel gösterge, mod popup'ı ve kar/ateş parçacık efektli klima kartı",
+  preview: false,
 });
