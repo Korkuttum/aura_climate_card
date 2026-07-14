@@ -31,8 +31,9 @@ const MODE_META = {
 };
 const DEFAULT_MODE_META = { icon: "mdi:help-circle", label: "Bilinmiyor", color: "#8a8a8a" };
 
-const R = 54, CX = 40, CY = 70;
-const SWEEP = (4 * Math.PI) / 3; // 240 derece
+const R = 46, CX = 54, CY = 20;
+const START_ANGLE = Math.PI; // 180 derece (sol uç)
+const SWEEP = Math.PI; // 180 derece - tam yarım daire
 
 function clamp(v, lo, hi) {
   return Math.max(lo, Math.min(hi, v));
@@ -40,7 +41,7 @@ function clamp(v, lo, hi) {
 
 function pointFor(fraction) {
   const f = clamp(fraction, 0, 1);
-  const phi = (2 * Math.PI) / 3 - f * SWEEP;
+  const phi = START_ANGLE - f * SWEEP;
   return { x: CX + R * Math.cos(phi), y: CY + R * Math.sin(phi) };
 }
 
@@ -110,6 +111,15 @@ class AuraClimateCard extends HTMLElement {
     return 3;
   }
 
+  getGridOptions() {
+    return {
+      columns: 6,
+      rows: 2,
+      min_columns: 6,
+      min_rows: 2,
+    };
+  }
+
   connectedCallback() {
     if (this._config && !this._built) this._buildDom();
   }
@@ -120,14 +130,14 @@ class AuraClimateCard extends HTMLElement {
       <style>${this._css()}</style>
       <ha-card>
         <div id="errorbox" style="display:none;padding:16px;color:#ff6961;font-size:13px;"></div>
-        <div id="root">
+        <div id="content">
           <div id="cardbg">
             <div id="particles"></div>
             <div id="tint"></div>
             <div id="wrap">
               <div class="arc-col">
                 <div class="arc-inner">
-                  <svg id="arcsvg" viewBox="0 0 108 140">
+                  <svg id="arcsvg" viewBox="0 0 108 76">
                     <path id="track" class="track"/>
                     <path id="lightfill"/>
                     <path id="darkfill"/>
@@ -156,7 +166,7 @@ class AuraClimateCard extends HTMLElement {
     `;
     this._els = {
       errorbox: this.shadowRoot.getElementById("errorbox"),
-      root: this.shadowRoot.getElementById("root"),
+      content: this.shadowRoot.getElementById("content"),
       particles: this.shadowRoot.getElementById("particles"),
       tint: this.shadowRoot.getElementById("tint"),
       track: this.shadowRoot.getElementById("track"),
@@ -201,12 +211,12 @@ class AuraClimateCard extends HTMLElement {
     if (!this._built) return;
     this._els.errorbox.textContent = msg;
     this._els.errorbox.style.display = "block";
-    this._els.root.style.display = "none";
+    this._els.content.style.display = "none";
   }
 
   _clearError() {
     this._els.errorbox.style.display = "none";
-    this._els.root.style.display = "block";
+    this._els.content.style.display = "block";
   }
 
   _minMax() {
@@ -361,9 +371,9 @@ class AuraClimateCard extends HTMLElement {
 
   _css() {
     return `
-      ha-card { background: transparent; box-shadow: none; border: none; padding: 0; }
-      #root { background: var(--ha-card-background, var(--card-background-color, #fff)); border-radius: var(--ha-card-border-radius, 12px); padding: 1.1rem; }
-      #cardbg { position: relative; background: #1c1c1e; border-radius: 12px; padding: 8px 10px; box-sizing: border-box; overflow: hidden; }
+      ha-card { background: transparent !important; box-shadow: none !important; border: none !important; padding: 0; overflow: visible; }
+      #content { display: block; }
+      #cardbg { position: relative; background: #1c1c1e; border-radius: 12px; padding: 8px 10px; box-sizing: border-box; overflow: hidden; min-width: 0; }
       #particles { position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
       #tint { position: absolute; inset: 0; pointer-events: none; z-index: 0; transition: background .3s ease; }
       #wrap { position: relative; z-index: 1; display: grid; grid-template-columns: 1fr 0.9fr 0.75fr; align-items: center; gap: 2px; height: 110px; }
@@ -372,11 +382,11 @@ class AuraClimateCard extends HTMLElement {
       #arcsvg { height: 100%; width: auto; display: block; }
       .track { fill: none; stroke: #555; opacity: .35; stroke-width: 13; stroke-linecap: round; }
       #lightfill, #darkfill { fill: none; stroke-width: 13; stroke-linecap: round; transition: d .15s ease, stroke .15s ease; }
-      #curtemp { position: absolute; top: 50%; left: 37.03%; transform: translate(-50%,-50%); font-size: 17px; font-weight: 600; color: #fff; line-height: 1; text-align: center; white-space: nowrap; }
+      #curtemp { position: absolute; top: 42%; left: 50%; transform: translate(-50%,-50%); font-size: 17px; font-weight: 600; color: #fff; line-height: 1; text-align: center; white-space: nowrap; }
       #curtemp .deg, #targettemp .deg { font-size: 11px; font-weight: 400; opacity: .7; }
-      .mode-col { position: relative; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
-      #thname { font-size: 12px; font-weight: 600; color: #fff; line-height: 1.15; text-align: center; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      #modebtn { background: rgba(255,255,255,.08); border: none; cursor: pointer; width: 44px; height: 44px; min-width: 44px; min-height: 44px; flex-shrink: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+      .mode-col { position: relative; height: 100%; width: 100%; }
+      #thname { position: absolute; top: 2px; left: 50%; transform: translateX(-50%); font-size: 12px; font-weight: 600; color: #fff; line-height: 1.15; text-align: center; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      #modebtn { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); background: rgba(255,255,255,.08); border: none; cursor: pointer; width: 44px; height: 44px; min-width: 44px; min-height: 44px; flex-shrink: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
       #modeicon { --mdc-icon-size: 22px; }
       .temp-col { display: flex; flex-direction: column; align-items: center; justify-content: center; }
       .steppers { display: flex; flex-direction: column; align-items: center; background: rgba(255,255,255,.06); border-radius: 22px; padding: 4px; gap: 7px; }
