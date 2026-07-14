@@ -17,8 +17,8 @@ const MODE_META = {
 };
 const DEFAULT_MODE_META = { icon: "mdi:help-circle", label: "Bilinmiyor", color: "#8a8a8a" };
 
-const R = 54, CX = 55, CY = 68;        // Gauge sola kaydırıldı
-const SWEEP = Math.PI;                 // 180 derece
+const R = 54, CX = 40, CY = 70;
+const SWEEP = (4 * Math.PI) / 3; // 240 derece (eski hali)
 
 function clamp(v, lo, hi) {
   return Math.max(lo, Math.min(hi, v));
@@ -26,7 +26,7 @@ function clamp(v, lo, hi) {
 
 function pointFor(fraction) {
   const f = clamp(fraction, 0, 1);
-  const phi = (Math.PI * 0.5) - f * SWEEP;   // 180 derece için ayarlandı
+  const phi = (2 * Math.PI) / 3 - f * SWEEP;
   return { x: CX + R * Math.cos(phi), y: CY + R * Math.sin(phi) };
 }
 
@@ -34,7 +34,7 @@ function arcSegment(f0, f1) {
   const lo = Math.min(f0, f1), hi = Math.max(f0, f1);
   if (hi - lo < 0.001) return "";
   const p0 = pointFor(lo), p1 = pointFor(hi);
-  const largeArc = hi - lo > 0.5 ? 1 : 0;
+  const largeArc = hi - lo > 0.75 ? 1 : 0;
   return `M ${p0.x.toFixed(2)} ${p0.y.toFixed(2)} A ${R} ${R} 0 ${largeArc} 0 ${p1.x.toFixed(2)} ${p1.y.toFixed(2)}`;
 }
 
@@ -112,7 +112,7 @@ class AuraClimateCard extends HTMLElement {
             <div id="wrap">
               <div class="arc-col">
                 <div class="arc-inner">
-                  <svg id="arcsvg" viewBox="0 0 130 130">
+                  <svg id="arcsvg" viewBox="0 0 108 140">
                     <path id="track" class="track"/>
                     <path id="lightfill"/>
                     <path id="darkfill"/>
@@ -370,14 +370,15 @@ class AuraClimateCard extends HTMLElement {
       #root { 
         background: var(--ha-card-background, var(--card-background-color, #fff)); 
         border-radius: var(--ha-card-border-radius, 12px); 
-        padding: 8px 10px 10px; 
+        padding: 10px 12px 12px; 
         overflow: hidden;
+        box-sizing: border-box;
       }
       #cardbg { 
         position: relative; 
         background: transparent; 
         border-radius: 10px; 
-        padding: 4px; 
+        padding: 6px; 
         box-sizing: border-box; 
         overflow: hidden; 
       }
@@ -386,18 +387,17 @@ class AuraClimateCard extends HTMLElement {
         position: relative; 
         z-index: 1; 
         display: grid; 
-        grid-template-columns: 1fr 0.85fr 0.8fr; 
+        grid-template-columns: 1fr 0.9fr 0.75fr; 
         align-items: center; 
-        gap: 4px; 
-        height: 102px; 
+        gap: 6px; 
+        height: 108px; 
       }
       .arc-col { 
         position: relative; 
         display: flex; 
         align-items: center; 
-        justify-content: flex-start; 
+        justify-content: center; 
         height: 100%; 
-        padding-left: 8px;
       }
       .arc-inner { position: relative; height: 100%; display: inline-block; }
       #arcsvg { height: 100%; width: auto; display: block; }
@@ -405,8 +405,8 @@ class AuraClimateCard extends HTMLElement {
       #lightfill, #darkfill { fill: none; stroke-width: 13; stroke-linecap: round; transition: d .15s ease, stroke .15s ease; }
       #curtemp { 
         position: absolute; 
-        top: 52%; 
-        left: 48%; 
+        top: 50%; 
+        left: 37%; 
         transform: translate(-50%,-50%); 
         font-size: 16.5px; 
         font-weight: 600; 
@@ -415,7 +415,7 @@ class AuraClimateCard extends HTMLElement {
         text-align: center; 
         white-space: nowrap; 
       }
-      #curtemp .deg, #targettemp .deg { font-size: 10.5px; font-weight: 400; opacity: .75; }
+      #curtemp .deg, #targettemp .deg { font-size: 10.8px; font-weight: 400; opacity: .75; }
       .mode-col { 
         position: relative; 
         height: 100%; 
@@ -423,16 +423,15 @@ class AuraClimateCard extends HTMLElement {
         flex-direction: column; 
         align-items: center; 
         justify-content: center; 
-        gap: 2px; 
+        gap: 4px; 
       }
       #thname { 
         font-size: 12.5px; 
         font-weight: 600; 
         color: #fff; 
-        line-height: 1.2; 
         text-align: center; 
-        margin-top: 2px;
-        max-width: 90px; 
+        margin-bottom: 6px;
+        max-width: 95px; 
         overflow: hidden; 
         text-overflow: ellipsis; 
         white-space: nowrap; 
@@ -441,23 +440,19 @@ class AuraClimateCard extends HTMLElement {
         background: rgba(255,255,255,.08); 
         border: none; 
         cursor: pointer; 
-        width: 44px; 
-        height: 44px; 
-        min-width: 44px; 
-        min-height: 44px; 
-        flex-shrink: 0; 
+        width: 46px; 
+        height: 46px; 
         border-radius: 50%; 
         display: flex; 
         align-items: center; 
         justify-content: center; 
-        margin: 4px 0;
       }
-      #modeicon { --mdc-icon-size: 22px; }
+      #modeicon { --mdc-icon-size: 23px; }
       .temp-col { display: flex; flex-direction: column; align-items: center; justify-content: center; }
-      .steppers { display: flex; flex-direction: column; align-items: center; background: rgba(255,255,255,.06); border-radius: 20px; padding: 3px; gap: 6px; }
-      .steppers button { background: none; border: none; cursor: pointer; width: 30px; height: 24px; display: flex; align-items: center; justify-content: center; color: #fff; border-radius: 14px; }
-      .steppers button ha-icon { --mdc-icon-size: 15px; }
-      #targettemp { font-size: 14.5px; font-weight: 700; color: #fff; }
+      .steppers { display: flex; flex-direction: column; align-items: center; background: rgba(255,255,255,.06); border-radius: 22px; padding: 4px; gap: 6px; }
+      .steppers button { background: none; border: none; cursor: pointer; width: 32px; height: 26px; display: flex; align-items: center; justify-content: center; color: #fff; border-radius: 16px; }
+      .steppers button ha-icon { --mdc-icon-size: 16px; }
+      #targettemp { font-size: 15px; font-weight: 700; color: #fff; }
       #popup { position: absolute; inset: 0; background: rgba(28,28,30,.94); display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; opacity: 0; pointer-events: none; transition: opacity .15s ease; z-index: 5; border-radius: inherit; }
       #popup button { display: flex; flex-direction: column; align-items: center; gap: 3px; background: rgba(255,255,255,.06); border: 2px solid transparent; cursor: pointer; width: 52px; padding: 7px 0 5px; border-radius: 12px; font-size: 10px; color: #fff; }
       #popup button ha-icon { --mdc-icon-size: 20px; }
