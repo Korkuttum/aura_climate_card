@@ -92,7 +92,7 @@ class AuraClimateCard extends HTMLElement {
   }
 
   getCardSize() {
-    return 2;   // rows: 2'ye uyumlu hale getirildi
+    return 2;
   }
 
   connectedCallback() {
@@ -108,7 +108,6 @@ class AuraClimateCard extends HTMLElement {
         <div id="root">
           <div id="cardbg">
             <div id="particles"></div>
-            <div id="tint"></div>
             <div id="wrap">
               <div class="arc-col">
                 <div class="arc-inner">
@@ -144,7 +143,6 @@ class AuraClimateCard extends HTMLElement {
       errorbox: this.shadowRoot.getElementById("errorbox"),
       root: this.shadowRoot.getElementById("root"),
       particles: this.shadowRoot.getElementById("particles"),
-      tint: this.shadowRoot.getElementById("tint"),
       track: this.shadowRoot.getElementById("track"),
       lightfill: this.shadowRoot.getElementById("lightfill"),
       darkfill: this.shadowRoot.getElementById("darkfill"),
@@ -320,7 +318,9 @@ class AuraClimateCard extends HTMLElement {
     this._els.modeicon.setAttribute("icon", meta.icon);
     this._els.thname.textContent = this._config.name || attrs.friendly_name || this._config.entity;
 
-    this._els.tint.style.background = `radial-gradient(circle at 30% 40%, ${meta.color}22, transparent 70%)`;
+    // En dış katman renk değiştiriyor
+    this._els.root.style.background = `var(--ha-card-background, var(--card-background-color, #fff))`;
+    this._els.root.style.boxShadow = `0 0 0 2px ${meta.color}33`;
 
     const action = attrs.hvac_action;
     const showParticles = this._config.show_particles !== false;
@@ -371,19 +371,19 @@ class AuraClimateCard extends HTMLElement {
       #root { 
         background: var(--ha-card-background, var(--card-background-color, #fff)); 
         border-radius: var(--ha-card-border-radius, 12px); 
-        padding: 8px; 
+        padding: 6px; 
         overflow: hidden;
+        transition: box-shadow .3s ease;
       }
       #cardbg { 
         position: relative; 
         background: transparent; 
         border-radius: 10px; 
-        padding: 8px; 
+        padding: 6px; 
         box-sizing: border-box; 
         overflow: hidden; 
       }
       #particles { position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
-      #tint { position: absolute; inset: 0; pointer-events: none; z-index: 0; transition: background .3s ease; }
       #wrap { 
         position: relative; 
         z-index: 1; 
@@ -391,24 +391,24 @@ class AuraClimateCard extends HTMLElement {
         grid-template-columns: 1fr 0.9fr 0.75fr; 
         align-items: center; 
         gap: 2px; 
-        height: 98px; 
+        height: 88px; 
       }
       .arc-col { position: relative; display: flex; align-items: center; justify-content: center; height: 100%; }
       .arc-inner { position: relative; height: 100%; display: inline-block; }
       #arcsvg { height: 100%; width: auto; display: block; }
       .track { fill: none; stroke: #555; opacity: .35; stroke-width: 13; stroke-linecap: round; }
       #lightfill, #darkfill { fill: none; stroke-width: 13; stroke-linecap: round; transition: d .15s ease, stroke .15s ease; }
-      #curtemp { position: absolute; top: 50%; left: 37.03%; transform: translate(-50%,-50%); font-size: 17px; font-weight: 600; color: #fff; line-height: 1; text-align: center; white-space: nowrap; }
-      #curtemp .deg, #targettemp .deg { font-size: 11px; font-weight: 400; opacity: .7; }
-      .mode-col { position: relative; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
-      #thname { font-size: 12px; font-weight: 600; color: #fff; line-height: 1.15; text-align: center; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      #modebtn { background: rgba(255,255,255,.08); border: none; cursor: pointer; width: 44px; height: 44px; min-width: 44px; min-height: 44px; flex-shrink: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
-      #modeicon { --mdc-icon-size: 22px; }
+      #curtemp { position: absolute; top: 50%; left: 37.03%; transform: translate(-50%,-50%); font-size: 16.5px; font-weight: 600; color: #fff; line-height: 1; text-align: center; white-space: nowrap; }
+      #curtemp .deg, #targettemp .deg { font-size: 10.5px; font-weight: 400; opacity: .75; }
+      .mode-col { position: relative; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; }
+      #thname { font-size: 11.5px; font-weight: 600; color: #fff; line-height: 1.15; text-align: center; max-width: 85px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      #modebtn { background: rgba(255,255,255,.08); border: none; cursor: pointer; width: 42px; height: 42px; min-width: 42px; min-height: 42px; flex-shrink: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+      #modeicon { --mdc-icon-size: 21px; }
       .temp-col { display: flex; flex-direction: column; align-items: center; justify-content: center; }
-      .steppers { display: flex; flex-direction: column; align-items: center; background: rgba(255,255,255,.06); border-radius: 22px; padding: 4px; gap: 7px; }
-      .steppers button { background: none; border: none; cursor: pointer; width: 32px; height: 26px; display: flex; align-items: center; justify-content: center; color: #fff; border-radius: 16px; }
-      .steppers button ha-icon { --mdc-icon-size: 16px; }
-      #targettemp { font-size: 15px; font-weight: 700; color: #fff; }
+      .steppers { display: flex; flex-direction: column; align-items: center; background: rgba(255,255,255,.06); border-radius: 20px; padding: 3px; gap: 6px; }
+      .steppers button { background: none; border: none; cursor: pointer; width: 30px; height: 24px; display: flex; align-items: center; justify-content: center; color: #fff; border-radius: 14px; }
+      .steppers button ha-icon { --mdc-icon-size: 15px; }
+      #targettemp { font-size: 14.5px; font-weight: 700; color: #fff; }
       #popup { position: absolute; inset: 0; background: rgba(28,28,30,.94); display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; opacity: 0; pointer-events: none; transition: opacity .15s ease; z-index: 5; border-radius: inherit; }
       #popup button { display: flex; flex-direction: column; align-items: center; gap: 3px; background: rgba(255,255,255,.06); border: 2px solid transparent; cursor: pointer; width: 52px; padding: 7px 0 5px; border-radius: 12px; font-size: 10px; color: #fff; }
       #popup button ha-icon { --mdc-icon-size: 20px; }
