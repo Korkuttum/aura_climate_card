@@ -318,9 +318,8 @@ class AuraClimateCard extends HTMLElement {
     this._els.modeicon.setAttribute("icon", meta.icon);
     this._els.thname.textContent = this._config.name || attrs.friendly_name || this._config.entity;
 
-    // En dış katman renk değiştiriyor
-    this._els.root.style.background = `var(--ha-card-background, var(--card-background-color, #fff))`;
-    this._els.root.style.boxShadow = `0 0 0 2px ${meta.color}33`;
+    // Dış ince çerçeve kaldırıldı
+    this._els.root.style.boxShadow = "none";
 
     const action = attrs.hvac_action;
     const showParticles = this._config.show_particles !== false;
@@ -373,7 +372,6 @@ class AuraClimateCard extends HTMLElement {
         border-radius: var(--ha-card-border-radius, 12px); 
         padding: 6px; 
         overflow: hidden;
-        transition: box-shadow .3s ease;
       }
       #cardbg { 
         position: relative; 
