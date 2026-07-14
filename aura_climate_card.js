@@ -92,7 +92,7 @@ class AuraClimateCard extends HTMLElement {
   }
 
   getCardSize() {
-    return 3;
+    return 2;   // rows: 2'ye uyumlu hale getirildi
   }
 
   connectedCallback() {
@@ -371,20 +371,28 @@ class AuraClimateCard extends HTMLElement {
       #root { 
         background: var(--ha-card-background, var(--card-background-color, #fff)); 
         border-radius: var(--ha-card-border-radius, 12px); 
-        padding: 12px; 
+        padding: 8px; 
         overflow: hidden;
       }
       #cardbg { 
         position: relative; 
-        background: #1c1c1e; 
+        background: transparent; 
         border-radius: 10px; 
-        padding: 12px; 
+        padding: 8px; 
         box-sizing: border-box; 
         overflow: hidden; 
       }
       #particles { position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
       #tint { position: absolute; inset: 0; pointer-events: none; z-index: 0; transition: background .3s ease; }
-      #wrap { position: relative; z-index: 1; display: grid; grid-template-columns: 1fr 0.9fr 0.75fr; align-items: center; gap: 2px; height: 110px; }
+      #wrap { 
+        position: relative; 
+        z-index: 1; 
+        display: grid; 
+        grid-template-columns: 1fr 0.9fr 0.75fr; 
+        align-items: center; 
+        gap: 2px; 
+        height: 98px; 
+      }
       .arc-col { position: relative; display: flex; align-items: center; justify-content: center; height: 100%; }
       .arc-inner { position: relative; height: 100%; display: inline-block; }
       #arcsvg { height: 100%; width: auto; display: block; }
