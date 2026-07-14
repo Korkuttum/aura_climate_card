@@ -6,18 +6,11 @@
  * efektleri (kor/kar) ile.
  *
  * Kurulum:
- *  1) Bu dosyayı /config/www/aura_climate_card.js olarak kopyalayın.
- *  2) Ayarlar > Panolar > Kaynaklar (Resources) altına ekleyin:
- *       URL: /local/aura_climate_card.js
- *       Tür: JavaScript Modülü
- *  3) Karta "Aura Climate Card" adıyla UI editöründen ekleyin, entity
- *     seçimini açılan yapılandırma ekranından yapın (kod yazmaya gerek yok).
- *
- * YAML örneği:
- *   type: custom:aura-climate-card
- *   entity: climate.oturma_odasi
- *   name: Oturma Odası        # opsiyonel
- *   show_particles: true      # opsiyonel, varsayılan true
+ * 1) Bu dosyayı /config/www/aura_climate_card.js olarak kopyalayın.
+ * 2) Ayarlar > Panolar > Kaynaklar (Resources) altına ekleyin:
+ * URL: /local/aura_climate_card.js
+ * Tür: JavaScript Modülü
+ * 3) Karta "Aura Climate Card" adıyla UI editöründen ekleyin.
  */
 
 const MODE_META = {
@@ -30,7 +23,6 @@ const MODE_META = {
   fan_only: { icon: "mdi:fan", label: "Fan", color: "#7ed6df" },
 };
 const DEFAULT_MODE_META = { icon: "mdi:help-circle", label: "Bilinmiyor", color: "#8a8a8a" };
-
 const R = 54, CX = 40, CY = 70;
 const SWEEP = (4 * Math.PI) / 3; // 240 derece
 
@@ -154,6 +146,7 @@ class AuraClimateCard extends HTMLElement {
         </div>
       </ha-card>
     `;
+
     this._els = {
       errorbox: this.shadowRoot.getElementById("errorbox"),
       root: this.shadowRoot.getElementById("root"),
@@ -171,21 +164,26 @@ class AuraClimateCard extends HTMLElement {
       minus: this.shadowRoot.getElementById("minus"),
       popup: this.shadowRoot.getElementById("popup"),
     };
+
     this._els.modebtn.addEventListener("click", (e) => {
       e.stopPropagation();
       this._popupOpen = !this._popupOpen;
       this._updateCard();
     });
+
     this._els.popup.addEventListener("click", (e) => {
       if (e.target === this._els.popup) {
         this._popupOpen = false;
         this._updateCard();
       }
     });
+
     this._els.plus.addEventListener("click", () => this._adjustTarget(this._step()));
     this._els.minus.addEventListener("click", () => this._adjustTarget(-this._step()));
+
     this._particlesBuilt = false;
     this._built = true;
+
     if (this._hass && this._config) {
       const stateObj = this._hass.states[this._config.entity];
       if (stateObj) {
@@ -294,6 +292,7 @@ class AuraClimateCard extends HTMLElement {
   _updateCard() {
     if (!this._built || !this._stateObj) return;
     this._clearError();
+
     const attrs = this._stateObj.attributes;
     const mode = this._mode();
     const meta = MODE_META[mode] || DEFAULT_MODE_META;
@@ -314,6 +313,7 @@ class AuraClimateCard extends HTMLElement {
       this._els.darkfill.setAttribute("d", arcSegment(0, fCurrent));
       this._els.lightfill.setAttribute("d", arcSegment(fCurrent, fTarget));
     }
+
     this._els.lightfill.style.stroke = meta.color;
     this._els.lightfill.style.strokeOpacity = "0.28";
     this._els.darkfill.style.stroke = meta.color;
@@ -321,17 +321,21 @@ class AuraClimateCard extends HTMLElement {
 
     this._els.curtemp.innerHTML = `${cur.toFixed(1)}<span class="deg">${unit}</span>`;
     this._els.targettemp.innerHTML = `${tgt.toFixed(1)}<span class="deg">${unit}</span>`;
+
     this._els.modebtn.style.color = meta.color;
     this._els.modebtn.style.background = meta.color + "26";
     this._els.modeicon.setAttribute("icon", meta.icon);
     this._els.thname.textContent = this._config.name || attrs.friendly_name || this._config.entity;
+
     this._els.tint.style.background = `radial-gradient(circle at 30% 40%, ${meta.color}22, transparent 70%)`;
 
     const action = attrs.hvac_action;
     const showParticles = this._config.show_particles !== false;
     if (showParticles) this._setupParticles();
+
     const snowOn = showParticles && (action ? action === "cooling" : mode === "cool");
     const emberOn = showParticles && (action ? action === "heating" : mode === "heat");
+
     this.shadowRoot.querySelectorAll(".snowp").forEach((el) => {
       el.style.display = snowOn ? "block" : "none";
     });
@@ -341,6 +345,7 @@ class AuraClimateCard extends HTMLElement {
 
     const supported = (attrs.hvac_modes && attrs.hvac_modes.length ? attrs.hvac_modes : [mode]);
     if (!supported.includes(mode)) supported.push(mode);
+
     this._els.popup.innerHTML = supported
       .map((m) => {
         const mm = MODE_META[m] || DEFAULT_MODE_META;
@@ -349,8 +354,10 @@ class AuraClimateCard extends HTMLElement {
         return `<button data-mode="${m}" style="${st}"><ha-icon icon="${mm.icon}"></ha-icon><span>${mm.label}</span></button>`;
       })
       .join("");
+
     this._els.popup.style.opacity = this._popupOpen ? "1" : "0";
     this._els.popup.style.pointerEvents = this._popupOpen ? "auto" : "none";
+
     this._els.popup.querySelectorAll("button").forEach((btn) => {
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
@@ -362,7 +369,11 @@ class AuraClimateCard extends HTMLElement {
   _css() {
     return `
       ha-card { background: transparent; box-shadow: none; border: none; padding: 0; }
-      #root { background: var(--ha-card-background, var(--card-background-color, #fff)); border-radius: var(--ha-card-border-radius, 12px); padding: 1.1rem; }
+      #root { 
+          background: transparent; 
+          border-radius: var(--ha-card-border-radius, 12px); 
+          padding: 1.1rem; 
+      }
       #cardbg { position: relative; background: #1c1c1e; border-radius: 12px; padding: 8px 10px; box-sizing: border-box; overflow: hidden; }
       #particles { position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
       #tint { position: absolute; inset: 0; pointer-events: none; z-index: 0; transition: background .3s ease; }
@@ -423,6 +434,7 @@ class AuraClimateCardEditor extends HTMLElement {
       if (this._particlesSwitch) this._particlesSwitch.checked = this._config.show_particles !== false;
       return;
     }
+
     this.innerHTML = "";
     const wrap = document.createElement("div");
     wrap.style.cssText = "display:flex;flex-direction:column;gap:16px;padding:8px 2px;";
@@ -458,6 +470,7 @@ class AuraClimateCardEditor extends HTMLElement {
       this._configChanged(Object.assign({}, this._config, { show_particles: ev.target.checked }));
     });
     this._particlesSwitch = particlesSwitch;
+
     switchRow.appendChild(switchLabel);
     switchRow.appendChild(particlesSwitch);
 
