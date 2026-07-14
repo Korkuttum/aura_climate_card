@@ -18,7 +18,7 @@ const MODE_META = {
 const DEFAULT_MODE_META = { icon: "mdi:help-circle", label: "Bilinmiyor", color: "#8a8a8a" };
 
 const R = 54, CX = 40, CY = 70;
-const SWEEP = (4 * Math.PI) / 3; // 240 derece (eski hali)
+const SWEEP = (4 * Math.PI) / 3; // 240 derece
 
 function clamp(v, lo, hi) {
   return Math.max(lo, Math.min(hi, v));
@@ -364,15 +364,21 @@ class AuraClimateCard extends HTMLElement {
         background: transparent; 
         box-shadow: none; 
         border: none; 
-        padding: 0; 
+        padding: 4px 6px; 
         border-radius: var(--ha-card-border-radius, 12px);
+        height: 100%;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
       }
       #root { 
         background: var(--ha-card-background, var(--card-background-color, #fff)); 
         border-radius: var(--ha-card-border-radius, 12px); 
-        padding: 10px 12px 12px; 
+        padding: 8px 10px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
         overflow: hidden;
-        box-sizing: border-box;
       }
       #cardbg { 
         position: relative; 
@@ -381,6 +387,7 @@ class AuraClimateCard extends HTMLElement {
         padding: 6px; 
         box-sizing: border-box; 
         overflow: hidden; 
+        flex: 1;
       }
       #particles { position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
       #wrap { 
@@ -389,8 +396,9 @@ class AuraClimateCard extends HTMLElement {
         display: grid; 
         grid-template-columns: 1fr 0.9fr 0.75fr; 
         align-items: center; 
-        gap: 6px; 
-        height: 100px; 
+        gap: 8px; 
+        height: 100%; 
+        flex: 1;
       }
       .arc-col { 
         position: relative; 
