@@ -376,7 +376,7 @@ class AuraClimateCard extends HTMLElement {
       #cardbg { position: relative; background: #1c1c1e; border-radius: 12px; padding: 8px 10px; box-sizing: border-box; overflow: hidden; min-width: 0; }
       #particles { position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
       #tint { position: absolute; inset: 0; pointer-events: none; z-index: 0; transition: background .3s ease; }
-      #wrap { position: relative; z-index: 1; display: grid; grid-template-columns: minmax(0,1fr) minmax(0,0.9fr) minmax(0,0.75fr); align-items: center; gap: 2px; height: 110px; }
+      #wrap { position: relative; z-index: 1; display: grid; grid-template-columns: 1fr 0.9fr 0.75fr; align-items: center; gap: 2px; height: 110px; }
       .arc-col { position: relative; display: flex; align-items: center; justify-content: center; height: 100%; overflow: hidden; min-width: 0; }
       .arc-inner { position: relative; height: 100%; width: 100%; }
       #arcsvg { height: 100%; width: 100%; display: block; }
