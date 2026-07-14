@@ -390,7 +390,7 @@ class AuraClimateCard extends HTMLElement {
         grid-template-columns: 1fr 0.9fr 0.75fr; 
         align-items: center; 
         gap: 6px; 
-        height: 108px; 
+        height: 100px; 
       }
       .arc-col { 
         position: relative; 
